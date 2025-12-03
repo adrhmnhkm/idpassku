@@ -1,0 +1,174 @@
+# Cursor AI Rules for Indo-Vault Project
+
+## Project Structure and Conventions
+
+This is a full-stack application with backend, frontend, extension, and infrastructure components.
+
+### File Organization
+- `backend/` - Node.js/Express API server
+- `frontend/` - React/Vue.js web application  
+- `extension/` - Browser extension (Chrome/Firefox)
+- `infra/` - Infrastructure as code (Terraform, Docker, etc.)
+- `docs/` - Project documentation
+
+### Coding Standards
+- Use consistent indentation (2 spaces for JavaScript/TypeScript, 4 for Python)
+- Follow ESLint/Prettier configuration in each subdirectory
+- Write meaningful commit messages following conventional commits
+- Keep functions small and focused on single responsibility
+- Use TypeScript where possible for better type safety
+
+### Development Workflow
+- Check existing code patterns before implementing new features
+- Run tests in respective directories before committing
+- Use environment variables for configuration, never hardcode secrets
+- Follow the established API patterns in the backend
+
+### Security Guidelines
+- Never commit API keys, passwords, or sensitive data
+- Use .env files for local development
+- Implement proper input validation and sanitization
+- Follow OWASP security best practices
+
+### Performance Considerations
+- Optimize bundle sizes in frontend builds
+- Implement proper caching strategies
+- Use lazy loading for heavy components
+- Monitor database query performance
+
+### Technology Stack Notes
+- Backend: Likely Node.js/Express with database integration
+- Frontend: Modern framework (React/Vue) with build tools
+- Extension: Manifest V3 for browser compatibility
+- Infrastructure: Docker containers, CI/CD pipelines
+
+## AI-Powered Development Rules
+
+### Context Understanding & Analysis
+- ALWAYS analyze the existing codebase structure before suggesting changes
+- Understand the relationship between backend APIs, frontend components, and extension functionality
+- Identify patterns for data flow between different parts of the system
+- Recognize authentication/authorization flows across the stack
+- Understand the domain model and business logic context
+
+### Problem-Solving Approach
+- Break complex problems into smaller, manageable tasks
+- Consider both immediate implementation and long-term maintainability
+- Think about scalability implications of proposed solutions
+- Evaluate trade-offs between different implementation approaches
+- Always consider the user experience impact
+
+### Code Generation Excellence
+- Generate production-ready code, not just prototypes
+- Include proper error handling and edge cases
+- Add meaningful comments for complex business logic
+- Follow existing naming conventions and patterns
+- Implement proper TypeScript types when applicable
+- Include unit tests for critical functions
+- Consider accessibility implications in UI components
+
+### Integration & Compatibility
+- Ensure API changes don't break existing frontend/extension integrations
+- Maintain backward compatibility when possible
+- Consider version bump requirements for breaking changes
+- Test cross-browser compatibility for extension features
+- Verify mobile responsiveness for web components
+
+### Performance & Optimization
+- Implement efficient database queries with proper indexing
+- Use appropriate caching strategies (Redis, browser cache, etc.)
+- Optimize bundle sizes through code splitting and tree shaking
+- Implement lazy loading for heavy components and routes
+- Consider memory usage patterns and potential leaks
+- Optimize API response times and reduce payload sizes
+
+### Security Hardening
+- Implement proper authentication flows (JWT, OAuth, etc.)
+- Add rate limiting to prevent abuse
+- Validate and sanitize all user inputs
+- Implement CORS policies correctly
+- Use HTTPS for all communications
+- Implement proper session management
+- Add security headers (CSP, X-Frame-Options, etc.)
+
+### Testing Strategy
+- Write comprehensive unit tests for business logic
+- Implement integration tests for API endpoints
+- Add end-to-end tests for critical user flows
+- Test extension functionality across different browsers
+- Include performance testing for API endpoints
+- Test error handling and edge cases
+
+### Documentation & Knowledge Sharing
+- Update API documentation when endpoints change
+- Document complex business logic and algorithms
+- Include setup instructions for new developers
+- Document deployment processes and environment variables
+ Create architectural diagrams for complex systems
+
+### Code Review & Quality Assurance
+- Conduct thorough code reviews focusing on logic, security, and performance
+- Check for potential security vulnerabilities
+- Verify code follows established patterns and conventions
+- Ensure proper error handling and logging
+- Check for potential memory leaks or performance issues
+- Validate that tests cover critical functionality
+
+### Debugging & Troubleshooting
+- Provide clear error messages with actionable information
+- Implement comprehensive logging for production debugging
+- Add debugging tools and utilities for development
+- Create troubleshooting guides for common issues
+- Implement health checks and monitoring endpoints
+
+### Scalability & Future-Proofing
+- Design components to handle increased load
+- Implement horizontal scaling strategies
+- Consider database scaling approaches (replication, sharding)
+- Plan for feature flags and gradual rollouts
+- Design for microservices architecture if applicable
+- Consider CDN integration for static assets
+
+### Developer Experience
+- Create clear and helpful error messages
+- Implement auto-complete for common operations
+- Use TypeScript for better IDE support
+- Include hot module reloading for faster development
+- Set up proper development environment with Docker
+- Create development scripts for common tasks
+
+### Monitoring & Observability
+- Implement proper logging with structured formats
+- Add application performance monitoring (APM)
+- Create health check endpoints
+- Implement proper error tracking and alerting
+- Add metrics for business KPIs
+- Monitor infrastructure resource usage
+
+When working on this project:
+1. ALWAYS analyze existing code patterns, dependencies, and architecture before making changes
+2. Consider the full impact across backend, frontend, and extension components
+3. Write production-ready code with proper testing and documentation
+4. Prioritize security, performance, and maintainability in all implementations
+5. Think about scalability and long-term maintenance from the start
+6. Ensure user experience remains excellent across all touchpoints
+
+## ⚠️ CRITICAL: Working Features Preservation
+
+**BEFORE MODIFYING ANY CODE, READ**: `.cursor/working-features-rules.md`
+
+This file contains detailed rules for preserving features that are currently working correctly:
+- Extension autofill functionality
+- Credential capture with login checks
+- 2FA disable feature
+- URL encryption in vault items
+- Extension authentication flow
+- Content script isolation
+
+**DO NOT MODIFY** any code mentioned in `working-features-rules.md` without:
+1. Reading the preservation rules first
+2. Understanding the full impact
+3. Extensive testing
+4. Documenting changes
+
+The working features are marked with ✅ WORKING status and must be preserved.

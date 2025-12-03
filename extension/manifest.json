@@ -1,0 +1,33 @@
+{
+    "manifest_version": 3,
+    "name": "Indo-Vault Password Capture",
+    "version": "1.0",
+    "description": "Auto-save passwords to Indo-Vault",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage",
+        "notifications"
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle",
+            "all_frames": false
+        }
+    ],
+    "host_permissions": [
+        "http://localhost:5000/*"
+    ]
+}

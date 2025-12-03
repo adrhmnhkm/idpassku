@@ -1,0 +1,56 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String        @id @default(cuid())
+  email      String        @unique
+  password   String
+  kdfSalt    String
+  kdfParams  Json
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  vaultItems VaultItem[]
+  tokens     RefreshToken[]
+
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean @default(false)
+
+  isVerified           Boolean   @default(false)
+  verificationToken    String?
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
+  // Zero-Knowledge Architecture Fields
+  encryptedVaultKey    String?   // Encrypted with Master Password
+  backupVaultKey       String?   // Encrypted with Recovery Key
+  recoveryKeyHash      String?   // Hash of Recovery Key for verification
+}
+
+model VaultItem {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  name       String   // Plaintext metadata for display/search
+  username   String   // Plaintext metadata for display/search
+  ciphertext String   // Encrypted: password + note
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  tokenHash  String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+}

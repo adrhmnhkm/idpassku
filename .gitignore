@@ -1,0 +1,35 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Build & dist
+dist/
+.next/
+out/
+build/
+coverage/
+
+# Docker
+*.pid
+docker-data/
+
+# Docs
+docs/
+
+
+# Cursor AI metadata
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+resume*
+resume_extension*

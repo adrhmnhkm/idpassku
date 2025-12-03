@@ -1,0 +1,238 @@
+# Browser Extension Development Rules
+
+## Extension Architecture & Structure
+
+### Manifest V3 Requirements
+- Always use Manifest V3 for Chrome Web Store compatibility
+- Use service workers instead of background pages
+- Implement proper permissions with minimal scope
+- Use declarativeNetRequest for content blocking instead of webRequest API
+- Use action handlers instead of browser_action in manifest
+
+### Extension Components
+- `popup/` - Extension popup UI (HTML/CSS/JS)
+- `background/` - Service worker background scripts
+- `content/` - Content scripts for webpage interaction
+- `options/` - Extension options/settings page
+- `assets/` - Icons, images, and static resources
+
+## Security & Permissions
+
+### Permission Management
+- Request only necessary permissions in manifest
+- Use optional permissions for features that need user consent
+- Implement proper host permissions for targeted websites
+- Use activeTab permission for temporary access when needed
+- Never request excessive broad permissions
+
+### Content Security Policy (CSP)
+- Implement strict CSP in manifest for security
+- Use nonces or hashes for inline scripts when necessary
+- Avoid eval() and similar dangerous functions
+- Use subresource integrity for external resources
+
+### Cross-Origin Security
+- Use proper CORS headers for external API calls
+- Validate all incoming data from content scripts
+- Implement proper message passing between contexts
+- Sanitize user inputs before processing
+
+## Content Script Guidelines
+
+### DOM Manipulation
+- Use MutationObserver for detecting DOM changes efficiently
+- Avoid excessive DOM queries and manipulations
+- Use Shadow DOM for encapsulation when appropriate
+- Implement proper cleanup on page unload
+
+### Website Compatibility
+- Test extension across popular websites and frameworks
+- Handle different document ready states properly
+- Account for Single Page Application (SPA) routing
+- Consider impact on website performance and load times
+
+### Conflict Prevention
+- Use unique CSS class names to avoid conflicts
+- Namespace JavaScript variables properly
+- Detect and handle other extensions gracefully
+- Use feature detection instead of browser sniffing
+
+## Data Storage & Management
+
+### Storage APIs
+- Use chrome.storage.local for user preferences and settings
+- Use chrome.storage.sync for cross-device synchronization
+- Implement proper data validation and sanitization
+- Handle storage quota limits gracefully
+
+### Data Persistence
+- Implement proper data migration between versions
+- Use structured data formats (JSON) for storage
+- Implement data backup and restore functionality
+- Handle storage unavailability scenarios
+
+## Performance Optimization
+
+### Bundle Optimization
+- Use webpack or rollup for module bundling
+- Implement code splitting for large extensions
+- Minify and compress assets for distribution
+- Use tree shaking to eliminate unused code
+
+### Memory Management
+- Clean up event listeners and timers properly
+- Avoid memory leaks in long-running content scripts
+- Use weak references where appropriate
+- Monitor extension memory usage
+
+### Network Efficiency
+- Implement proper caching strategies
+- Use background sync for offline capabilities
+- Batch API requests to reduce overhead
+- Implement retry logic for failed requests
+
+## Browser Compatibility
+
+### Multi-Browser Support
+- Test across Chrome, Firefox, Edge, and Safari
+- Use webextension-polyfill for cross-browser compatibility
+- Handle browser-specific API differences
+- Implement feature detection for browser capabilities
+
+### Version Support
+- Target current and previous browser versions
+- Implement graceful degradation for older browsers
+- Use browser-specific manifest entries when needed
+- Test on both stable and beta versions
+
+## User Experience & Interface
+
+### Notification System
+- Use chrome.notifications for user alerts
+- Implement proper notification permissions
+- Use contextual and actionable notifications
+- Allow users to customize notification preferences
+
+### Installation & Onboarding
+- Create clear installation instructions
+- Implement first-time user onboarding flow
+- Provide contextual help and tooltips
+- Use progressive disclosure for complex features
+
+### Responsive Design
+- Design popup UI for different screen sizes
+- Use CSS media queries for responsive layouts
+- Test on high-DPI displays
+- Consider keyboard navigation accessibility
+
+## Testing & Debugging
+
+### Extension Testing
+- Test popup, background, and content scripts separately
+- Use chrome.extensions.reload for development workflow
+- Test across different websites and scenarios
+- Implement automated testing where possible
+
+### Debugging Tools
+- Use Chrome DevTools for popup and content script debugging
+- Use chrome.runtime.getBackgroundPage() for background debugging
+- Implement comprehensive logging system
+- Use browser extension development tools
+
+### Error Handling
+- Implement proper error boundaries in UI components
+- Use try-catch blocks for critical operations
+- Provide user-friendly error messages
+- Implement error reporting for production issues
+
+## Internationalization & Localization
+
+### Multi-Language Support
+- Use chrome.i18n API for string localization
+- Structure language files properly (_locales)
+- Handle text direction for RTL languages
+- Test with different character sets and encodings
+
+### Cultural Considerations
+- Consider date/time formats for different locales
+- Handle currency and number formatting
+- Avoid culture-specific icons and imagery
+- Test with different language character sets
+
+## Publishing & Distribution
+
+### Store Guidelines
+- Follow Chrome Web Store policies strictly
+- Provide clear and accurate store listing
+- Include proper screenshots and descriptions
+- Implement proper versioning scheme
+
+### Updates & Migration
+- Use chrome.runtime.onInstalled for update handling
+- Implement data migration between versions
+- Communicate changes to users effectively
+- Test update scenarios thoroughly
+
+## Integration with Backend
+
+### API Communication
+- Use proper authentication for backend calls
+- Implement rate limiting for API requests
+- Handle offline scenarios gracefully
+- Use web sockets for real-time features if needed
+
+### Data Synchronization
+- Implement conflict resolution for synced data
+- Use incremental updates to reduce bandwidth
+- Handle synchronization failures gracefully
+- Provide sync status indicators to users
+
+## Security Best Practices
+
+### Input Validation
+- Sanitize all user inputs and external data
+- Implement proper content security policies
+- Use HTTPS for all communications
+- Validate all JSON data structures
+
+### Code Security
+- Avoid using eval() and similar functions
+- Implement proper CSP headers
+- Use subresource integrity for external scripts
+- Regular security audits of dependencies
+
+## Development Workflow
+
+### Local Development
+- Set up hot reload for faster development
+- Use development vs production configurations
+- Implement proper build pipeline
+- Use version control with proper branching strategy
+
+### Code Quality
+- Use ESLint and Prettier for code formatting
+- Implement proper TypeScript type checking
+- Use pre-commit hooks for quality checks
+- Conduct regular code reviews
+
+## Performance Monitoring
+
+### Metrics Collection
+- Track extension load times
+- Monitor memory usage patterns
+- Track API response times
+- Collect user interaction analytics
+
+### Optimization Strategies
+- Profile extension performance regularly
+- Identify and fix performance bottlenecks
+- Optimize images and other assets
+- Monitor bundle size impact
+
+When working on the extension:
+1. ALWAYS test across different browsers and websites
+2. Consider security implications of all features and permissions
+3. Implement proper error handling and user feedback
+4. Optimize for performance and memory usage
+5. Ensure user privacy and data protection
+6. Follow Chrome Web Store and other store guidelines strictly
