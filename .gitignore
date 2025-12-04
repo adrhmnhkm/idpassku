@@ -3,11 +3,7 @@ node_modules/
 npm-debug.log
 
 # Environment
-.env
-.env.local
-.env.development
-.env.production
-.env.test
+backend/.env_production
 
 # Build & dist
 dist/

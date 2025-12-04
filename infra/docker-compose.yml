@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   db:
@@ -7,23 +7,37 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: postgres          # ganti nanti kalau sudah running stabil
       POSTGRES_DB: indovault
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5433:5432"                         # host 5433 → internal 5432
+    networks:
+      - indo-vault-net
 
   backend:
-    build: ../backend
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
     container_name: indo-vault-backend
     restart: unless-stopped
     env_file:
-      - ../backend/.env
+      - ../backend/.env_production          # wajib pakai env production
     depends_on:
       - db
-    ports:
-      - "5000:5000"
+#    ports:
+#      - "5000:5000"
+    networks:
+      - indo-vault-net
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             node dist/server.js"
 
 volumes:
   db_data:
+
+networks:
+  indo-vault-net:
+    name: indo-vault-net
+
