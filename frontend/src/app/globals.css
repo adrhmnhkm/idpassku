@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Emerald Green Color Palette */
+    --emerald-50: 236 253 245;
+    --emerald-100: 209 250 229;
+    --emerald-200: 167 243 208;
+    --emerald-300: 110 231 183;
+    --emerald-400: 52 211 153;
+    --emerald-500: 16 185 129;
+    --emerald-600: 5 150 105;
+    --emerald-700: 4 120 87;
+    --emerald-800: 6 95 70;
+    --emerald-900: 6 78 59;
+    --emerald-950: 2 44 34;
+
+    /* Dark Backgrounds (Deep Green/Black) */
+    --bg-dark-primary: 2 44 34;
+    /* emerald-950 */
+    --bg-dark-secondary: 6 78 59;
+    /* emerald-900 */
+    --bg-dark-tertiary: 6 95 70;
+    /* emerald-800 */
+    --bg-black: 2 6 23;
+    /* slate-950 */
+
+    /* Borders */
+    --border-emerald: 16 185 129;
+    --border-emerald-dim: 5 150 105;
+
+    /* Text */
+    --text-emerald: 110 231 183;
+    --text-emerald-bright: 52 211 153;
+    --text-muted: 148 163 184;
+
+    background: #020617;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 151 55% 41.5%;
+    /* Emerald 600 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 151 55% 41.5%;
+    /* Emerald 600 */
+    --chart-1: 151 55% 41.5%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer utilities {
+
+  /* Emerald Glow Effects */
+  .emerald-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3),
+      inset 0 0 20px rgba(16, 185, 129, 0.1);
+  }
+
+  .emerald-glow-sm {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2),
+      inset 0 0 10px rgba(16, 185, 129, 0.05);
+  }
+
+  .emerald-glow-lg {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4),
+      inset 0 0 30px rgba(16, 185, 129, 0.15);
+  }
+
+  /* Gradient Backgrounds */
+  .bg-emerald-dark-gradient {
+    background: linear-gradient(135deg,
+        rgb(2, 6, 23) 0%,
+        /* slate-950 */
+        rgb(2, 44, 34) 50%,
+        /* emerald-950 */
+        rgb(6, 78, 59) 100%
+        /* emerald-900 */
+      );
+  }
+
+  .bg-emerald-radial-gradient {
+    background: radial-gradient(ellipse at top,
+        rgba(16, 185, 129, 0.15) 0%,
+        rgba(2, 6, 23, 0.8) 50%,
+        rgb(2, 6, 23) 100%);
+  }
+
+  /* Modern Dark Card Style */
+  .card-modern-dark {
+    background: rgba(2, 44, 34, 0.6);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    backdrop-filter: blur(10px);
+    position: relative;
+  }
+
+  .card-modern-dark:hover {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+  }
+
+  /* Neon Text */
+  .text-neon-emerald {
+    color: rgb(110, 231, 183);
+    text-shadow: 0 0 10px rgba(110, 231, 183, 0.5);
+  }
+
+  .text-neon-emerald-bright {
+    color: rgb(52, 211, 153);
+    text-shadow: 0 0 15px rgba(52, 211, 153, 0.6);
+  }
+
+  /* Animated Gradient Border */
+  @keyframes gradient-border {
+
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .border-gradient-animated {
+    background: linear-gradient(90deg,
+        rgba(16, 185, 129, 0.3),
+        rgba(110, 231, 183, 0.5),
+        rgba(16, 185, 129, 0.3));
+    background-size: 200% 200%;
+    animation: gradient-border 3s ease infinite;
+  }
+}
+
+/* Global Body Styling */
+body {
+  background: linear-gradient(135deg,
+      rgb(2, 6, 23) 0%,
+      rgb(2, 44, 34) 50%,
+      rgb(6, 78, 59) 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
