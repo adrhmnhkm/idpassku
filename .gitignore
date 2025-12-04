@@ -4,6 +4,8 @@ npm-debug.log
 
 # Environment
 backend/.env_production
+**/.env
+**/.env.*
 
 # Build & dist
 dist/
