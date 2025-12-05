@@ -11,17 +11,19 @@ import AddItemModal from "@/components/AddItemModal";
 import { PasswordGenerator } from "@/components/password-generator";
 
 export default function DashboardHome() {
-  const token = useAuth((s) => s.token);
+  const token = useAuth((state) => state.token);
   const [stats, setStats] = useState({
     totalItems: 0,
     securityScore: 0,
     recentItems: [] as any[],
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
       try {
+        setError(null);
         const res = await apiClient.get("/vault/items");
         const items = res.data.items || [];
 
@@ -36,8 +38,10 @@ export default function DashboardHome() {
           securityScore,
           recentItems,
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch dashboard stats:", error);
+        const errorMessage = error?.message || error?.response?.data?.message || "Failed to load dashboard data";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -50,6 +54,17 @@ export default function DashboardHome() {
 
   if (loading) {
     return <div className="text-emerald-300">Loading dashboard...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400">
+          <p className="font-semibold">Error loading dashboard</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -115,7 +130,7 @@ export default function DashboardHome() {
           <div className="text-gray-500 italic">No recent items found.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {stats.recentItems.map((item) => (
+            {stats.recentItems.map((item: any) => (
               <div key={item.id} className="bg-[#020617] border border-emerald-500/20 rounded-lg p-4 hover:border-emerald-500/50 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-emerald-100">{item.name}</span>

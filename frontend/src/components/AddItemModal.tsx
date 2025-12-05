@@ -66,7 +66,8 @@ export default function AddItemModal() {
       setOpen(false);
     } catch (error: any) {
       console.error("Error creating vault item:", error);
-      alert("Gagal membuat item: " + (error.response?.data?.message || error.message));
+      const errorMessage = error?.message || error?.response?.data?.message || "Failed to create item";
+      alert("Gagal membuat item: " + errorMessage);
     } finally {
       setLoading(false);
     }
