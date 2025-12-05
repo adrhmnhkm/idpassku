@@ -19,7 +19,31 @@ export default function RegisterPage() {
       await api.post("/auth/register", { email, name, password });
       setSuccess(true);
     } catch (error: any) {
-      alert("Pendaftaran gagal: " + (error.response?.data?.message || error.message));
+      console.error("Register error:", error);
+      
+      // Handle network errors
+      if (error.code === 'ERR_BLOCKED_BY_CLIENT' || error.message?.includes('ERR_BLOCKED_BY_CLIENT')) {
+        alert(
+          "Request diblokir oleh browser extension atau ad blocker.\n\n" +
+          "Solusi:\n" +
+          "1. Nonaktifkan ad blocker sementara\n" +
+          "2. Atau tambahkan localhost:5000 ke whitelist\n" +
+          "3. Atau nonaktifkan extension Indo-Vault sementara untuk testing"
+        );
+      } else if (!error.response) {
+        // Network error (no response)
+        alert(
+          "Tidak dapat terhubung ke server.\n\n" +
+          "Pastikan:\n" +
+          "1. Backend berjalan di http://localhost:5000\n" +
+          "2. Tidak ada firewall yang memblokir\n" +
+          "3. Cek console untuk detail error"
+        );
+      } else {
+        // API error (with response)
+        const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan";
+        alert("Pendaftaran gagal: " + errorMessage);
+      }
     } finally {
       setLoading(false);
     }

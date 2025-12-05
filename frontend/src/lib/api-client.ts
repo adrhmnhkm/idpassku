@@ -1,8 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { useAuth } from "./store";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export const apiClient = axios.create({
-    baseURL: "http://localhost:5000",
+    baseURL: API_BASE_URL,
 });
 
 // Request interceptor to attach Authorization header
@@ -45,6 +47,18 @@ apiClient.interceptors.response.use(
             _retry?: boolean;
         };
 
+        // Handle network errors
+        if (!error.response) {
+            console.error("Network error:", error.message);
+            // Return a more descriptive error
+            return Promise.reject({
+                ...(error as any),
+                message: "Network error: Unable to reach the server. Please check your connection.",
+                isNetworkError: true,
+            });
+        }
+
+        // Handle 401 Unauthorized
         if (error.response?.status === 401 && !originalRequest._retry) {
             if (isRefreshing) {
                 // If already refreshing, queue this request
@@ -68,16 +82,21 @@ apiClient.interceptors.response.use(
             const refreshToken = useAuth.getState().refreshToken;
 
             if (!refreshToken) {
-                // No refresh token, logout
+                // No refresh token, logout and redirect
                 useAuth.getState().logout();
                 if (typeof window !== "undefined") {
-                    window.location.href = "/login";
+                    // Use replace to avoid adding to history
+                    window.location.replace("/login");
                 }
-                return Promise.reject(error);
+                return Promise.reject({
+                    ...(error as any),
+                    message: "Session expired. Please login again.",
+                    isAuthError: true,
+                });
             }
 
             try {
-                const response = await axios.post("http://localhost:5000/auth/refresh", {
+                const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
                     refreshToken,
                 });
 
@@ -96,14 +115,40 @@ apiClient.interceptors.response.use(
                 processQueue(refreshError as AxiosError, null);
                 isRefreshing = false;
 
-                // Refresh failed, logout
+                // Refresh failed, logout and redirect
                 useAuth.getState().logout();
                 if (typeof window !== "undefined") {
-                    window.location.href = "/login";
+                    window.location.replace("/login");
                 }
 
-                return Promise.reject(refreshError);
+                const authError = refreshError as AxiosError;
+                return Promise.reject({
+                    ...authError,
+                    message: "Session expired. Please login again.",
+                    isAuthError: true,
+                });
             }
+        }
+
+        // Handle other HTTP errors
+        const status = error.response?.status;
+        if (status === 403) {
+            return Promise.reject({
+                ...(error as any),
+                message: "Access forbidden. You don't have permission to perform this action.",
+            });
+        }
+        if (status === 404) {
+            return Promise.reject({
+                ...(error as any),
+                message: "Resource not found.",
+            });
+        }
+        if (status >= 500) {
+            return Promise.reject({
+                ...(error as any),
+                message: "Server error. Please try again later.",
+            });
         }
 
         return Promise.reject(error);

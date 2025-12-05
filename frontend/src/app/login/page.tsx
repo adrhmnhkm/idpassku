@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/axios";
 import { useAuth } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { keyManager } from "@/lib/crypto";
 
 export default function LoginPage() {
   const setToken = useAuth((s) => s.setToken);
+  const token = useAuth((s) => s.token);
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -18,6 +19,19 @@ export default function LoginPage() {
   const [twoFactorToken, setTwoFactorToken] = useState("");
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate check to avoid SSR mismatch
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (hydrated && token) {
+      router.replace("/dashboard");
+    }
+  }, [hydrated, token, router]);
 
   async function handleLogin() {
     setLoading(true);
@@ -45,10 +59,26 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
-      alert("Login gagal: " + (error.response?.data?.message || error.message));
+      const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan saat login";
+      alert("Login gagal: " + errorMessage);
+      
+      // Reset 2FA state on error
+      if (error.response?.status !== 202) {
+        setShowTwoFactor(false);
+        setTwoFactorToken("");
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  // Show loading while checking auth state
+  if (!hydrated || (hydrated && token)) {
+    return (
+      <div className="min-h-screen bg-emerald-dark-gradient flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (

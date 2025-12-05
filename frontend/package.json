@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "NEXT_PUBLIC_API_URL=http://localhost:5000 next dev",
+    "dev:prod": "NEXT_PUBLIC_API_URL=https://api.idpassku.com next dev",
     "build": "next build",
+    "build:prod": "NEXT_PUBLIC_API_URL=https://api.idpassku.com next build",
     "start": "next start",
     "lint": "eslint"
   },
