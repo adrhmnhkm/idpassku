@@ -1,7 +1,9 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  console.error("❌ NEXT_PUBLIC_API_URL is NOT defined!");
+}
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
