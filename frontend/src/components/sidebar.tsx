@@ -11,6 +11,9 @@ export default function Sidebar() {
   const handleLogout = () => {
     keyManager.clearKey(); // Clear encryption key on logout
     logout();
+
+      // redirect lintas domain agar semua sesi logout benar-benar hilang
+    window.location.href = "https://idpassku.com";
   };
 
   return (
