@@ -56,7 +56,7 @@ export default function LoginPage() {
       // Derive encryption key
       await keyManager.deriveKey(password);
 
-      router.push("/dashboard");
+      router.push(`${process.env.NEXT_PUBLIC_DASHBOARD_URL}/dashboard`);
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan saat login";
