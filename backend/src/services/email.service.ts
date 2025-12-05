@@ -42,7 +42,9 @@ async function createTransporter() {
 
 export async function sendVerificationEmail(to: string, token: string) {
   const client = await createTransporter();
-  const verificationLink = `http://localhost:3000/verify-email?token=${token}`;
+  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+  const verificationLink = `${baseUrl}/verify-email?token=${token}`;
+
 
   // Use SMTP_SENDER if available, otherwise SMTP_USER, otherwise fallback
   const senderEmail = process.env.SMTP_SENDER || process.env.SMTP_USER || 'security@indo-vault.com';
@@ -72,7 +74,9 @@ export async function sendVerificationEmail(to: string, token: string) {
 
 export async function sendPasswordResetEmail(to: string, token: string) {
   const client = await createTransporter();
-  const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+const resetLink = `${baseUrl}/reset-password?token=${token}`;
+
 
   // Use SMTP_SENDER if available, otherwise SMTP_USER, otherwise fallback
   const senderEmail = process.env.SMTP_SENDER || process.env.SMTP_USER || 'security@indo-vault.com';
