@@ -15,6 +15,15 @@ export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const searchParams = req.nextUrl.searchParams;
   
+  // CRITICAL: Never process static assets, chunks, or Next.js internal routes
+  if (
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/api/") ||
+    pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf|eot)$/i)
+  ) {
+    return NextResponse.next();
+  }
+  
   // Normalize hostname (remove port if present)
   const normalizedHost = hostname.split(":")[0];
   
@@ -31,15 +40,15 @@ export function middleware(req: NextRequest) {
     req.headers.get("next-router-prefetch") === "1" ||
     req.headers.get("accept")?.includes("text/x-component");
 
-  // For RSC requests to protected routes on main domain, allow through
-  // Client-side will handle the redirect/logout
+  // For RSC requests to protected routes on main domain, return 404 to prevent CORS
+  // Client-side script in layout.tsx will handle the redirect
   if (isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
+    return new NextResponse(null, { status: 404 });
   }
 
   // CRITICAL: If accessing protected routes on main domain, redirect to vault domain
   // This ensures dashboard is never accessible on main domain
-  // Skip redirect for RSC requests (handled by client-side)
+  // Skip redirect for RSC requests (handled by client-side script)
   if (!isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
     const url = new URL(`https://${VAULT_DOMAIN}${pathname}${req.nextUrl.search}`);
     return NextResponse.redirect(url, 307); // 307 Temporary Redirect (preserves method)

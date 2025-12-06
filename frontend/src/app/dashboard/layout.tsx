@@ -23,10 +23,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHydrated(true);
   }, []);
 
-  // STEP 2 — Check domain and handle unauthorized access (IMMEDIATE, before any render)
+  // STEP 2 — Check domain IMMEDIATELY on mount (before hydration)
+  // This prevents any rendering that would trigger static chunk loading
   useEffect(() => {
-    if (!hydrated) return;
-
     if (typeof window === "undefined") {
       setKeyLoaded(true);
       return;
@@ -37,18 +36,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isMainDomain = hostname === "idpassku.com" || (!isVaultDomain && !hostname.includes("localhost") && !hostname.includes("127.0.0.1"));
 
     // CRITICAL: If accessing dashboard from main domain, immediately redirect/logout
-    // This handles both authenticated and unauthenticated cases
+    // This must happen BEFORE hydration to prevent static chunk loading
     if (isMainDomain) {
+      // Use synchronous script execution to prevent any React rendering
       if (token) {
-        // If authenticated, logout first then redirect
-        console.warn("Unauthorized access: Dashboard accessed from main domain while authenticated. Logging out...");
-        keyManager.clearKey();
-        logout();
+        // Clear localStorage synchronously
+        try {
+          localStorage.removeItem("indovault-auth");
+          sessionStorage.removeItem("encryption-key");
+        } catch (e) {
+          // Ignore errors
+        }
       }
-      // Always redirect to login page on main domain
+      // Immediate redirect - this prevents any React components from rendering
       window.location.replace("https://idpassku.com/login");
       return;
     }
+
+    // Continue with hydration check
+    if (!hydrated) return;
 
     // If no token, redirect to login and mark as loaded (redirect will happen)
     if (!token) {
