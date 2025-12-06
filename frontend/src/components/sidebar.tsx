@@ -38,7 +38,7 @@ export default function Sidebar() {
       // Small delay to ensure state is cleared
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Redirect to main domain login page (not landing, so user can login again)
+      // Redirect to main domain login page
       console.log("[LOGOUT] 🔄 Redirecting to main domain login page...");
       window.location.replace("https://idpassku.com/login");
     }

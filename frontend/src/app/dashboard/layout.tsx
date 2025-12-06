@@ -18,7 +18,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [zustandReady, setZustandReady] = useState(false);
   const [missingToken, setMissingToken] = useState(false);
 
-  // STEP 1 — Wait for Zustand to hydrate from localStorage
+  // STEP 1 — Extract token from URL if present (from login redirect) and store in vault localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Check if token is in URL (from login redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+    const refreshTokenFromUrl = urlParams.get("refreshToken");
+
+    if (tokenFromUrl) {
+      console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL, storing in vault localStorage...");
+      const setToken = useAuth.getState().setToken;
+      setToken(tokenFromUrl);
+      
+      if (refreshTokenFromUrl) {
+        const setRefreshToken = useAuth.getState().setRefreshToken;
+        setRefreshToken(refreshTokenFromUrl);
+      }
+
+      // Remove token from URL for security
+      urlParams.delete("token");
+      urlParams.delete("refreshToken");
+      const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
+      window.history.replaceState({}, "", newUrl);
+      console.log("[DASHBOARD LAYOUT] ✅ Token stored, URL cleaned");
+    }
+  }, []);
+
+  // STEP 1b — Wait for Zustand to hydrate from localStorage
   useEffect(() => {
     console.log("[DASHBOARD LAYOUT] 🟢 Starting hydration...");
     
@@ -87,10 +115,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
 
-    // Double-check localStorage as fallback before redirecting
+    // Double-check localStorage and cookie as fallback before redirecting
     let finalToken = token;
     if (!finalToken) {
       try {
+        // Check localStorage first
         const stored = localStorage.getItem("indovault-auth");
         console.log("[DASHBOARD LAYOUT] 🔍 Checking localStorage:", {
           hasStorage: !!stored,
@@ -108,8 +137,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         } else {
           console.warn("[DASHBOARD LAYOUT] ⚠️ No localStorage data found for 'indovault-auth'");
         }
+
       } catch (error) {
-        console.error("[DASHBOARD LAYOUT] ❌ Error reading localStorage:", error);
+        console.error("[DASHBOARD LAYOUT] ❌ Error reading localStorage/cookie:", error);
       }
     } else {
       console.log("[DASHBOARD LAYOUT] ✅ Token found from Zustand");

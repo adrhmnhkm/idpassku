@@ -28,17 +28,8 @@ export default function LoginPage() {
     setHydrated(true);
   }, []);
 
-  // Pastikan login dilakukan di vault domain untuk menghindari masalah storage lintas domain
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isVaultDomain =
-      window.location.hostname === "vault.idpassku.com" ||
-      window.location.hostname.includes("vault.");
-    if (!isVaultDomain) {
-      setRedirectingToVault(true);
-      window.location.replace("https://vault.idpassku.com/login");
-    }
-  }, []);
+  // Login harus di main domain (idpassku.com/login)
+  // Middleware akan redirect jika diakses dari vault domain
 
   // Jangan auto-redirect; cukup tandai jika sudah login
   useEffect(() => {
@@ -48,21 +39,21 @@ export default function LoginPage() {
   }, [hydrated, token]);
 
   async function handleLogin() {
-    // CRITICAL: Ensure we're on vault domain before login
-    const isVaultDomain = typeof window !== "undefined" && 
-      (window.location.hostname === "vault.idpassku.com" || window.location.hostname.includes("vault."));
+    // Login harus di main domain (idpassku.com/login)
+    const isMainDomain = typeof window !== "undefined" && 
+      (window.location.hostname === "idpassku.com" || 
+       (window.location.hostname !== "vault.idpassku.com" && !window.location.hostname.includes("vault.")));
     
-    if (!isVaultDomain) {
-      console.error("[LOGIN] ❌ Not on vault domain! Redirecting first...");
-      window.location.replace("https://vault.idpassku.com/login");
+    if (!isMainDomain) {
+      console.error("[LOGIN] ❌ Not on main domain! Middleware should have redirected.");
       return;
     }
 
     setLoading(true);
     try {
       console.log("[LOGIN] 🔐 Starting login process...", {
-        hostname: window.location.hostname,
-        isVaultDomain,
+        hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
+        isMainDomain,
       });
 
       // Step 1: Attempt login (with or without 2FA token)
@@ -87,7 +78,7 @@ export default function LoginPage() {
         hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
       });
       
-      // Store tokens - CRITICAL: Must be on vault domain for localStorage to work
+      // Store tokens in localStorage (main domain) - will be transferred to vault via URL
       setToken(accessToken);
       
       // Store refresh token if provided
@@ -137,11 +128,18 @@ export default function LoginPage() {
         return;
       }
 
-      console.log("[LOGIN] ✅ Token confirmed stored, redirecting...");
+      console.log("[LOGIN] ✅ Token confirmed stored, redirecting to vault domain...");
 
-      // Always redirect to dashboard on vault domain
-      // We're already on vault domain, so use relative path
-      router.replace("/dashboard");
+      // After login, redirect to vault domain with token in URL (temporary)
+      // Vault domain will extract token and store in its own localStorage
+      const vaultUrl = new URL("https://vault.idpassku.com/dashboard");
+      vaultUrl.searchParams.set("token", accessToken);
+      if (refreshToken) {
+        vaultUrl.searchParams.set("refreshToken", refreshToken);
+      }
+      
+      console.log("[LOGIN] 🔄 Redirecting to vault with token in URL (will be stored in vault localStorage)");
+      window.location.replace(vaultUrl.toString());
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan saat login";
@@ -157,8 +155,8 @@ export default function LoginPage() {
     }
   }
 
-  // Show loading while redirecting ke vault atau hidrasi
-  if (redirectingToVault || !hydrated) {
+  // Show loading while checking auth state
+  if (!hydrated) {
     return (
       <div className="min-h-screen bg-emerald-dark-gradient flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>

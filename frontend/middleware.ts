@@ -63,14 +63,14 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 307); // 307 Temporary Redirect (preserves method)
   }
 
-  // If accessing public routes on vault domain, redirect to main domain
-  // Note: We can't check auth state in middleware, so we'll let the page handle this
-  // But we should redirect public routes like landing page to main domain
-  if (isVaultDomain && pathname === "/") {
-    const url = new URL(`https://${MAIN_DOMAIN}/`);
-    console.log(`[MIDDLEWARE] 🔵 REDIRECT: Landing page on vault domain -> main domain`, {
+  // CRITICAL: All public routes (login, register, etc) must be on MAIN domain
+  // Redirect from vault domain to main domain
+  if (isVaultDomain && PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + "/"))) {
+    const url = new URL(`https://${MAIN_DOMAIN}${pathname}${req.nextUrl.search}`);
+    console.log(`[MIDDLEWARE] 🔵 REDIRECT: Public route on vault domain -> main domain`, {
       from: `${normalizedHost}${pathname}`,
       to: url.toString(),
+      route: pathname,
     });
     return NextResponse.redirect(url, 307);
   }
