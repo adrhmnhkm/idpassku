@@ -31,7 +31,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const refreshTokenFromUrl = urlParams.get("refreshToken");
 
     if (tokenFromUrl) {
-      console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL, storing in vault localStorage...");
+      console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL, storing in vault localStorage...", {
+        tokenLength: tokenFromUrl.length,
+        hasRefreshToken: !!refreshTokenFromUrl,
+        hostname: window.location.hostname,
+      });
       
       // Immediately set token in Zustand
       const setToken = useAuth.getState().setToken;
@@ -45,19 +49,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Wait for Zustand to persist and verify
       const verifyAndClean = async () => {
         let retries = 0;
-        const maxRetries = 10; // Increase retries
+        const maxRetries = 15; // Increase retries even more
         
         while (retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 150)); // Increase delay
           
           const stored = localStorage.getItem("indovault-auth");
           const parsed = stored ? JSON.parse(stored) : null;
-          const tokenStored = !!parsed?.state?.token && parsed?.state?.token === tokenFromUrl;
+          const storedToken = parsed?.state?.token;
+          const tokenStored = !!storedToken && storedToken === tokenFromUrl;
           
           console.log(`[DASHBOARD LAYOUT] 📦 Token storage verification (attempt ${retries + 1}/${maxRetries}):`, {
             tokenStored,
             hasStorage: !!stored,
-            tokenMatches: parsed?.state?.token === tokenFromUrl,
+            tokenMatches: storedToken === tokenFromUrl,
+            storedTokenLength: storedToken?.length,
+            expectedTokenLength: tokenFromUrl.length,
           });
 
           if (tokenStored) {
@@ -66,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             urlParams.delete("refreshToken");
             const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
             window.history.replaceState({}, "", newUrl);
-            console.log("[DASHBOARD LAYOUT] ✅ Token stored and URL cleaned");
+            console.log("[DASHBOARD LAYOUT] ✅ Token stored and URL cleaned - proceeding to auth check");
             setTokenExtracted(true);
             return;
           }
@@ -83,14 +90,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           retries++;
         }
         
-        // If still not stored after all retries, proceed anyway (token is in URL, will be checked again)
-        console.error("[DASHBOARD LAYOUT] ⚠️ Token not stored after all retries, but proceeding (token in URL will be checked)");
-        // Clean URL anyway
-        urlParams.delete("token");
-        urlParams.delete("refreshToken");
-        const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
-        window.history.replaceState({}, "", newUrl);
-        setTokenExtracted(true);
+        // If still not stored after all retries, check one more time
+        const finalCheck = localStorage.getItem("indovault-auth");
+        const finalParsed = finalCheck ? JSON.parse(finalCheck) : null;
+        const finalToken = finalParsed?.state?.token;
+        
+        if (finalToken && finalToken === tokenFromUrl) {
+          console.log("[DASHBOARD LAYOUT] ✅ Token found in final check - proceeding");
+          urlParams.delete("token");
+          urlParams.delete("refreshToken");
+          const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
+          window.history.replaceState({}, "", newUrl);
+          setTokenExtracted(true);
+        } else {
+          // If still not stored, proceed anyway - token is in URL and will be checked in STEP 2
+          console.error("[DASHBOARD LAYOUT] ⚠️ Token not stored after all retries, but proceeding (token in URL will be checked in STEP 2)", {
+            finalTokenExists: !!finalToken,
+            finalTokenMatches: finalToken === tokenFromUrl,
+          });
+          // Don't clean URL yet - let STEP 2 handle it
+          setTokenExtracted(true);
+        }
       };
 
       verifyAndClean();
@@ -247,7 +267,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       if (hasTokenInUrl) {
         console.log("[DASHBOARD LAYOUT] ⏳ Token in URL but not in state yet, waiting for save...");
-        // Token is being extracted, wait a bit
+        // Token is being extracted in STEP 1, wait longer for it to complete
         setTimeout(() => {
           const stored = localStorage.getItem("indovault-auth");
           const parsed = stored ? JSON.parse(stored) : null;
@@ -261,15 +281,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             setMissingToken(true);
             setKeyLoaded(true);
           }
-        }, 300);
+        }, 1000); // Increase wait time to 1 second
         return;
       }
       
+      // Only show login prompt if we're sure there's no token and no token in URL
       console.warn("[DASHBOARD LAYOUT] 🔴 No token found after all checks - showing login prompt", {
         hostname,
         pathname,
         tokenFromZustand: !!token,
         hasTokenInUrl,
+        note: "This should not happen if token extraction worked correctly",
       });
       setMissingToken(true);
       setKeyLoaded(true);
@@ -285,31 +307,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         tokenSource: token ? "zustand" : "localStorage",
       });
       
+      // CRITICAL: Encryption key is stored in sessionStorage which is domain-specific
+      // When redirecting from main domain to vault domain, sessionStorage is not accessible
+      // So we need to check if key exists, but don't redirect if it doesn't
+      // The key will be re-derived when user tries to decrypt items
       keyManager.loadKeyFromSession().then((success) => {
         if (success) {
           console.log("[DASHBOARD LAYOUT] ✅ Encryption key restored from session");
-          setKeyLoaded(true);
         } else {
-          console.error("[DASHBOARD LAYOUT] ❌ No encryption key in session - forcing re-login", {
+          console.warn("[DASHBOARD LAYOUT] ⚠️ No encryption key in session (expected after cross-domain redirect)", {
             hostname,
             pathname,
+            note: "Key will be re-derived when needed for decryption",
           });
-          logout();
-          setMissingToken(true);
-          setKeyLoaded(true);
-          // Redirect to main domain login
-          window.location.replace(getMainDomainUrl("/login"));
         }
+        // Always set keyLoaded to true, even if key not found
+        // Key is only needed when decrypting items, not for dashboard access
+        setKeyLoaded(true);
       }).catch((error) => {
         console.error("[DASHBOARD LAYOUT] ❌ Error loading encryption key:", error, {
           hostname,
           pathname,
+          note: "Continuing anyway - key will be re-derived when needed",
         });
-        logout();
-        setMissingToken(true);
+        // Don't redirect - key is not required for dashboard access
         setKeyLoaded(true);
-        // Redirect to main domain login
-        window.location.replace("https://idpassku.com/login");
       });
     }
   }, [hydrated, zustandReady, tokenExtracted, token, logout]);
