@@ -50,7 +50,7 @@ export default function LoginPage() {
     try {
       console.log("[LOGIN] 🔐 Starting login process...", {
         hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
-        isMainDomain,
+        isMainDomain: isMainDomain(),
       });
 
       // Step 1: Attempt login (with or without 2FA token)

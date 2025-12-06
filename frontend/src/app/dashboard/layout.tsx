@@ -32,6 +32,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     if (tokenFromUrl) {
       console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL, storing in vault localStorage...");
+      
+      // Immediately set token in Zustand
       const setToken = useAuth.getState().setToken;
       setToken(tokenFromUrl);
       
@@ -43,16 +45,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Wait for Zustand to persist and verify
       const verifyAndClean = async () => {
         let retries = 0;
-        while (retries < 5) {
-          await new Promise(resolve => setTimeout(resolve, 150));
+        const maxRetries = 10; // Increase retries
+        
+        while (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           const stored = localStorage.getItem("indovault-auth");
           const parsed = stored ? JSON.parse(stored) : null;
           const tokenStored = !!parsed?.state?.token && parsed?.state?.token === tokenFromUrl;
           
-          console.log(`[DASHBOARD LAYOUT] 📦 Token storage verification (attempt ${retries + 1}):`, {
+          console.log(`[DASHBOARD LAYOUT] 📦 Token storage verification (attempt ${retries + 1}/${maxRetries}):`, {
             tokenStored,
             hasStorage: !!stored,
+            tokenMatches: parsed?.state?.token === tokenFromUrl,
           });
 
           if (tokenStored) {
@@ -66,16 +71,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return;
           }
           
+          // If not stored yet, retry setting
+          if (retries < maxRetries - 1) {
+            console.log(`[DASHBOARD LAYOUT] ⚠️ Token not stored yet (attempt ${retries + 1}), retrying set...`);
+            setToken(tokenFromUrl);
+            if (refreshTokenFromUrl) {
+              useAuth.getState().setRefreshToken(refreshTokenFromUrl);
+            }
+          }
+          
           retries++;
         }
         
-        // If still not stored, retry setting
-        console.error("[DASHBOARD LAYOUT] ❌ Token not stored after retries, retrying set...");
-        setToken(tokenFromUrl);
-        if (refreshTokenFromUrl) {
-          useAuth.getState().setRefreshToken(refreshTokenFromUrl);
-        }
-        setTimeout(() => setTokenExtracted(true), 300);
+        // If still not stored after all retries, proceed anyway (token is in URL, will be checked again)
+        console.error("[DASHBOARD LAYOUT] ⚠️ Token not stored after all retries, but proceeding (token in URL will be checked)");
+        // Clean URL anyway
+        urlParams.delete("token");
+        urlParams.delete("refreshToken");
+        const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
+        window.history.replaceState({}, "", newUrl);
+        setTokenExtracted(true);
       };
 
       verifyAndClean();
@@ -133,17 +148,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setTimeout(checkZustandReady, 50);
   }, [token, tokenExtracted]);
 
-  // STEP 2 — Check authentication and load encryption key (only after hydration)
+  // STEP 2 — Check authentication and load encryption key (only after hydration AND token extraction)
   // NOTE: Domain check is handled by middleware, we don't need to check here
   // to avoid race conditions and multiple redirects
   useEffect(() => {
     console.log("[DASHBOARD LAYOUT] 🔍 Checking auth state...", {
       hydrated,
       zustandReady,
+      tokenExtracted,
       hasToken: !!token,
       hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
       pathname: typeof window !== "undefined" ? window.location.pathname : "SSR",
     });
+
+    // CRITICAL: Wait for token extraction to complete first
+    if (!tokenExtracted) {
+      console.log("[DASHBOARD LAYOUT] ⏳ Waiting for token extraction from URL...");
+      return;
+    }
 
     if (!hydrated || !zustandReady) {
       console.log("[DASHBOARD LAYOUT] ⏳ Waiting for hydration/Zustand...");
@@ -163,11 +185,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     let finalToken = token;
     
     // CRITICAL: Check URL params first (token might be in URL from login redirect)
+    // This is a fallback in case STEP 1 didn't catch it
     if (!finalToken && typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const tokenFromUrl = urlParams.get("token");
       if (tokenFromUrl) {
-        console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL params, extracting now...");
+        console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL params (fallback), extracting now...");
         const setToken = useAuth.getState().setToken;
         setToken(tokenFromUrl);
         finalToken = tokenFromUrl;
@@ -177,12 +200,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           useAuth.getState().setRefreshToken(refreshTokenFromUrl);
         }
         
-        // Clean URL immediately
-        urlParams.delete("token");
-        urlParams.delete("refreshToken");
-        const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
-        window.history.replaceState({}, "", newUrl);
-        console.log("[DASHBOARD LAYOUT] ✅ Token extracted from URL and URL cleaned");
+        // Wait a bit for Zustand to persist, then clean URL
+        setTimeout(() => {
+          urlParams.delete("token");
+          urlParams.delete("refreshToken");
+          const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
+          window.history.replaceState({}, "", newUrl);
+          console.log("[DASHBOARD LAYOUT] ✅ Token extracted from URL (fallback) and URL cleaned");
+        }, 200);
       }
     }
     
@@ -287,10 +312,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         window.location.replace("https://idpassku.com/login");
       });
     }
-  }, [hydrated, zustandReady, token, logout]);
+  }, [hydrated, zustandReady, tokenExtracted, token, logout]);
 
-  // STEP 4 — Render "blank" while hydration/key loading is happening
-  if (!hydrated || !zustandReady || !keyLoaded) {
+  // STEP 4 — Render "blank" while token extraction/hydration/key loading is happening
+  if (!tokenExtracted || !hydrated || !zustandReady || !keyLoaded) {
     return (
       <div className="min-h-screen bg-emerald-dark-gradient text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
