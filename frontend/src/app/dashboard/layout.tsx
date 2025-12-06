@@ -17,12 +17,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const [hydrated, setHydrated] = useState(false);
   const [keyLoaded, setKeyLoaded] = useState(false);
+  const [zustandReady, setZustandReady] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
-  // STEP 1 — Hydrate
+  // STEP 1 — Wait for Zustand to hydrate from localStorage
   useEffect(() => {
-    console.log("[DASHBOARD LAYOUT] 🟢 Hydrating...");
-    setHydrated(true);
-  }, []);
+    console.log("[DASHBOARD LAYOUT] 🟢 Starting hydration...");
+    
+    // Check if Zustand has loaded from localStorage
+    const checkZustandReady = () => {
+      try {
+        // Check localStorage directly as fallback
+        const stored = localStorage.getItem("indovault-auth");
+        const parsed = stored ? JSON.parse(stored) : null;
+        const hasTokenInStorage = parsed?.state?.token;
+        
+        console.log("[DASHBOARD LAYOUT] 📦 Zustand storage check:", {
+          hasStorage: !!stored,
+          hasTokenInStorage: !!hasTokenInStorage,
+          tokenFromZustand: !!token,
+        });
+
+        // If we have token in storage but not in Zustand yet, wait a bit more
+        if (hasTokenInStorage && !token) {
+          console.log("[DASHBOARD LAYOUT] ⏳ Token in storage but Zustand not ready yet, waiting...");
+          setTimeout(checkZustandReady, 100);
+          return;
+        }
+
+        // Zustand is ready
+        setZustandReady(true);
+        setHydrated(true);
+        console.log("[DASHBOARD LAYOUT] ✅ Zustand ready:", {
+          tokenFromZustand: !!token,
+          tokenFromStorage: !!hasTokenInStorage,
+        });
+      } catch (error) {
+        console.error("[DASHBOARD LAYOUT] ❌ Error checking Zustand:", error);
+        setZustandReady(true);
+        setHydrated(true);
+      }
+    };
+
+    // Give Zustand a moment to hydrate
+    setTimeout(checkZustandReady, 50);
+  }, [token]);
 
   // STEP 2 — Check authentication and load encryption key (only after hydration)
   // NOTE: Domain check is handled by middleware, we don't need to check here
@@ -30,13 +69,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     console.log("[DASHBOARD LAYOUT] 🔍 Checking auth state...", {
       hydrated,
+      zustandReady,
       hasToken: !!token,
       hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
       pathname: typeof window !== "undefined" ? window.location.pathname : "SSR",
     });
 
-    if (!hydrated) {
-      console.log("[DASHBOARD LAYOUT] ⏳ Waiting for hydration...");
+    if (!hydrated || !zustandReady) {
+      console.log("[DASHBOARD LAYOUT] ⏳ Waiting for hydration/Zustand...");
       return;
     }
 
@@ -49,23 +89,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
 
-    // If no token, redirect to login
-    if (!token) {
-      console.warn("[DASHBOARD LAYOUT] 🔴 No token found - redirecting to login", {
+    // Double-check localStorage as fallback before redirecting
+    let finalToken = token;
+    if (!finalToken) {
+      try {
+        const stored = localStorage.getItem("indovault-auth");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          finalToken = parsed?.state?.token || null;
+          console.log("[DASHBOARD LAYOUT] 🔄 Fallback check - token from localStorage:", !!finalToken);
+        }
+      } catch (error) {
+        console.error("[DASHBOARD LAYOUT] ❌ Error reading localStorage:", error);
+      }
+    }
+
+    // If no token after all checks, redirect to login (only once)
+    if (!finalToken && !redirecting) {
+      console.warn("[DASHBOARD LAYOUT] 🔴 No token found after all checks - redirecting to login", {
         hostname,
         pathname,
+        tokenFromZustand: !!token,
       });
+      setRedirecting(true);
       setKeyLoaded(true);
-      window.location.replace("https://idpassku.com/login");
+      // Use setTimeout to prevent multiple redirects
+      setTimeout(() => {
+        window.location.replace("https://idpassku.com/login");
+      }, 100);
       return;
     }
 
     // If we have token, proceed with key loading
     // We assume we're on the correct domain (vault.idpassku.com) because middleware handles redirects
-    if (token) {
+    if (finalToken) {
       console.log("[DASHBOARD LAYOUT] 🔑 Token found - loading encryption key...", {
         hostname,
         pathname,
+        tokenSource: token ? "zustand" : "localStorage",
       });
       
       keyManager.loadKeyFromSession().then((success) => {
@@ -89,10 +150,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         window.location.replace("https://idpassku.com/login");
       });
     }
-  }, [hydrated, token, logout, router]);
+  }, [hydrated, zustandReady, token, logout, router]);
 
   // STEP 4 — Render "blank" while hydration/key loading is happening
-  if (!hydrated || !keyLoaded) {
+  if (!hydrated || !zustandReady || !keyLoaded) {
     return (
       <div className="min-h-screen bg-emerald-dark-gradient text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -103,7 +164,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!token) {
+  // Final check - if still no token, don't render (redirect is on the way)
+  const hasToken = token || (typeof window !== "undefined" && (() => {
+    try {
+      const stored = localStorage.getItem("indovault-auth");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return !!parsed?.state?.token;
+      }
+    } catch {}
+    return false;
+  })());
+
+  if (!hasToken) {
+    console.log("[DASHBOARD LAYOUT] ⏳ No token - waiting for redirect...");
     return null; // Redirect is on the way
   }
 
