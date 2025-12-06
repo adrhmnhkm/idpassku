@@ -11,25 +11,36 @@ export default function Sidebar() {
   const refreshToken = useAuth((s) => s.refreshToken);
 
   const handleLogout = async () => {
+    console.log("[LOGOUT] 🚪 Starting logout process...");
+    
     try {
       // Call backend to revoke refresh token
       if (refreshToken) {
         try {
+          console.log("[LOGOUT] 📡 Calling backend logout API...");
           await api.post("/auth/logout", { refreshToken });
+          console.log("[LOGOUT] ✅ Backend logout successful");
         } catch (error) {
           // Continue with logout even if API call fails
-          console.error("Logout API call failed:", error);
+          console.error("[LOGOUT] ⚠️ Logout API call failed:", error);
         }
+      } else {
+        console.log("[LOGOUT] ℹ️ No refresh token to revoke");
       }
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("[LOGOUT] ❌ Error during logout:", error);
     } finally {
       // Clear local state
+      console.log("[LOGOUT] 🧹 Clearing local state...");
       keyManager.clearKey(); // Clear encryption key on logout
       logout(); // Clear tokens from store
 
-      // Redirect to main domain landing page
-      window.location.href = "https://idpassku.com";
+      // Small delay to ensure state is cleared
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Redirect to main domain login page (not landing, so user can login again)
+      console.log("[LOGOUT] 🔄 Redirecting to main domain login page...");
+      window.location.replace("https://idpassku.com/login");
     }
   };
 

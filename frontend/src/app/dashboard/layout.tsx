@@ -148,6 +148,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           logout();
           setMissingToken(true);
           setKeyLoaded(true);
+          // Redirect to main domain login
+          window.location.replace("https://idpassku.com/login");
         }
       }).catch((error) => {
         console.error("[DASHBOARD LAYOUT] ❌ Error loading encryption key:", error, {
@@ -157,6 +159,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         logout();
         setMissingToken(true);
         setKeyLoaded(true);
+        // Redirect to main domain login
+        window.location.replace("https://idpassku.com/login");
       });
     }
   }, [hydrated, zustandReady, token, logout]);
