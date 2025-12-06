@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { useAuth } from "./store";
+import { getMainDomainUrl } from "./url-helper";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -86,7 +87,7 @@ apiClient.interceptors.response.use(
                 useAuth.getState().logout();
                 if (typeof window !== "undefined") {
                     // Redirect to main domain login page
-                    window.location.replace("https://idpassku.com/login");
+                    window.location.replace(getMainDomainUrl("/login"));
                 }
                 return Promise.reject({
                     ...(error as any),
@@ -119,7 +120,7 @@ apiClient.interceptors.response.use(
                 useAuth.getState().logout();
                 if (typeof window !== "undefined") {
                     // Redirect to main domain login page
-                    window.location.replace("https://idpassku.com/login");
+                    window.location.replace(getMainDomainUrl("/login"));
                 }
 
                 const authError = refreshError as AxiosError;

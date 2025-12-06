@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { keyManager } from "@/lib/crypto";
+import { getVaultDomainUrl, isMainDomain } from "@/lib/url-helper";
 
 export default function LoginPage() {
   const setToken = useAuth((s) => s.setToken);
@@ -28,7 +29,7 @@ export default function LoginPage() {
     setHydrated(true);
   }, []);
 
-  // Login harus di main domain (idpassku.com/login)
+  // Login harus di main domain (idpassku.com/login atau localhost)
   // Middleware akan redirect jika diakses dari vault domain
 
   // Jangan auto-redirect; cukup tandai jika sudah login
@@ -39,12 +40,8 @@ export default function LoginPage() {
   }, [hydrated, token]);
 
   async function handleLogin() {
-    // Login harus di main domain (idpassku.com/login)
-    const isMainDomain = typeof window !== "undefined" && 
-      (window.location.hostname === "idpassku.com" || 
-       (window.location.hostname !== "vault.idpassku.com" && !window.location.hostname.includes("vault.")));
-    
-    if (!isMainDomain) {
+    // Login harus di main domain (idpassku.com/login atau localhost)
+    if (!isMainDomain()) {
       console.error("[LOGIN] ❌ Not on main domain! Middleware should have redirected.");
       return;
     }
@@ -132,7 +129,7 @@ export default function LoginPage() {
 
       // After login, redirect to vault domain with token in URL (temporary)
       // Vault domain will extract token and store in its own localStorage
-      const vaultUrl = new URL("https://vault.idpassku.com/dashboard");
+      const vaultUrl = new URL(getVaultDomainUrl("/dashboard"));
       vaultUrl.searchParams.set("token", accessToken);
       if (refreshToken) {
         vaultUrl.searchParams.set("refreshToken", refreshToken);
@@ -177,7 +174,7 @@ export default function LoginPage() {
               Kamu sudah login. Buka dashboard di vault domain:
               <div className="mt-2">
                 <a
-                  href="https://vault.idpassku.com/dashboard"
+                  href={getVaultDomainUrl("/dashboard")}
                   className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow"
                 >
                   Buka Vault Dashboard

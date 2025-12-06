@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/store";
 import { keyManager } from "@/lib/crypto";
 import { TwoFactorSetup } from "@/components/two-factor-setup";
 import { api } from "@/lib/axios";
+import { getMainDomainUrl } from "@/lib/url-helper";
 
 export default function Sidebar() {
   const logout = useAuth((s) => s.logout);
@@ -40,7 +41,7 @@ export default function Sidebar() {
 
       // Redirect to main domain login page
       console.log("[LOGOUT] 🔄 Redirecting to main domain login page...");
-      window.location.replace("https://idpassku.com/login");
+      window.location.replace(getMainDomainUrl("/login"));
     }
   };
 

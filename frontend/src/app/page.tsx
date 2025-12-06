@@ -7,19 +7,15 @@ import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
+import { getVaultDomainUrl, isMainDomain } from "@/lib/url-helper";
 
 export default function Home() {
   const token = useAuth((s) => s.token);
 
   useEffect(() => {
     // If user is authenticated and on main domain, redirect to vault domain
-    if (token && typeof window !== "undefined") {
-      const isMainDomain = window.location.hostname === "idpassku.com" || 
-        (window.location.hostname !== "vault.idpassku.com" && !window.location.hostname.includes("vault."));
-      
-      if (isMainDomain) {
-        window.location.href = "https://vault.idpassku.com/dashboard";
-      }
+    if (token && typeof window !== "undefined" && isMainDomain()) {
+      window.location.href = getVaultDomainUrl("/dashboard");
     }
   }, [token]);
 

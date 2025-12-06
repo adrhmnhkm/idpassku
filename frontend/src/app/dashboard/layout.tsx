@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import { keyManager } from "@/lib/crypto";
 import { useAutoLock } from "@/hooks/use-auto-lock";
+import { getMainDomainUrl } from "@/lib/url-helper";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const token = useAuth((s) => s.token);
@@ -17,8 +18,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [keyLoaded, setKeyLoaded] = useState(false);
   const [zustandReady, setZustandReady] = useState(false);
   const [missingToken, setMissingToken] = useState(false);
+  const [tokenExtracted, setTokenExtracted] = useState(false);
 
   // STEP 1 — Extract token from URL if present (from login redirect) and store in vault localStorage
+  // This MUST happen first, before any auth checks
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -37,17 +40,58 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setRefreshToken(refreshTokenFromUrl);
       }
 
-      // Remove token from URL for security
-      urlParams.delete("token");
-      urlParams.delete("refreshToken");
-      const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
-      window.history.replaceState({}, "", newUrl);
-      console.log("[DASHBOARD LAYOUT] ✅ Token stored, URL cleaned");
+      // Wait for Zustand to persist and verify
+      const verifyAndClean = async () => {
+        let retries = 0;
+        while (retries < 5) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+          
+          const stored = localStorage.getItem("indovault-auth");
+          const parsed = stored ? JSON.parse(stored) : null;
+          const tokenStored = !!parsed?.state?.token && parsed?.state?.token === tokenFromUrl;
+          
+          console.log(`[DASHBOARD LAYOUT] 📦 Token storage verification (attempt ${retries + 1}):`, {
+            tokenStored,
+            hasStorage: !!stored,
+          });
+
+          if (tokenStored) {
+            // Remove token from URL for security
+            urlParams.delete("token");
+            urlParams.delete("refreshToken");
+            const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
+            window.history.replaceState({}, "", newUrl);
+            console.log("[DASHBOARD LAYOUT] ✅ Token stored and URL cleaned");
+            setTokenExtracted(true);
+            return;
+          }
+          
+          retries++;
+        }
+        
+        // If still not stored, retry setting
+        console.error("[DASHBOARD LAYOUT] ❌ Token not stored after retries, retrying set...");
+        setToken(tokenFromUrl);
+        if (refreshTokenFromUrl) {
+          useAuth.getState().setRefreshToken(refreshTokenFromUrl);
+        }
+        setTimeout(() => setTokenExtracted(true), 300);
+      };
+
+      verifyAndClean();
+    } else {
+      // No token in URL, proceed normally
+      setTokenExtracted(true);
     }
   }, []);
 
-  // STEP 1b — Wait for Zustand to hydrate from localStorage
+  // STEP 1b — Wait for token extraction and Zustand to hydrate from localStorage
   useEffect(() => {
+    if (!tokenExtracted) {
+      console.log("[DASHBOARD LAYOUT] ⏳ Waiting for token extraction from URL...");
+      return;
+    }
+
     console.log("[DASHBOARD LAYOUT] 🟢 Starting hydration...");
     
     // Check if Zustand has loaded from localStorage
@@ -87,7 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // Give Zustand a moment to hydrate
     setTimeout(checkZustandReady, 50);
-  }, [token]);
+  }, [token, tokenExtracted]);
 
   // STEP 2 — Check authentication and load encryption key (only after hydration)
   // NOTE: Domain check is handled by middleware, we don't need to check here
@@ -115,8 +159,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
 
-    // Double-check localStorage and cookie as fallback before redirecting
+    // Double-check localStorage and URL params as fallback before redirecting
     let finalToken = token;
+    
+    // CRITICAL: Check URL params first (token might be in URL from login redirect)
+    if (!finalToken && typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get("token");
+      if (tokenFromUrl) {
+        console.log("[DASHBOARD LAYOUT] 🔑 Token found in URL params, extracting now...");
+        const setToken = useAuth.getState().setToken;
+        setToken(tokenFromUrl);
+        finalToken = tokenFromUrl;
+        
+        const refreshTokenFromUrl = urlParams.get("refreshToken");
+        if (refreshTokenFromUrl) {
+          useAuth.getState().setRefreshToken(refreshTokenFromUrl);
+        }
+        
+        // Clean URL immediately
+        urlParams.delete("token");
+        urlParams.delete("refreshToken");
+        const newUrl = window.location.pathname + (urlParams.toString() ? "?" + urlParams.toString() : "");
+        window.history.replaceState({}, "", newUrl);
+        console.log("[DASHBOARD LAYOUT] ✅ Token extracted from URL and URL cleaned");
+      }
+    }
+    
     if (!finalToken) {
       try {
         // Check localStorage first
@@ -139,18 +208,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
       } catch (error) {
-        console.error("[DASHBOARD LAYOUT] ❌ Error reading localStorage/cookie:", error);
+        console.error("[DASHBOARD LAYOUT] ❌ Error reading localStorage:", error);
       }
     } else {
-      console.log("[DASHBOARD LAYOUT] ✅ Token found from Zustand");
+      console.log("[DASHBOARD LAYOUT] ✅ Token found from Zustand or URL");
     }
 
-    // If no token after all checks, redirect to login (only once)
+    // If no token after all checks, wait a bit more (might be still saving from URL)
     if (!finalToken) {
+      // Check if token was just extracted from URL - give it time to save
+      const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const hasTokenInUrl = urlParams?.has("token");
+      
+      if (hasTokenInUrl) {
+        console.log("[DASHBOARD LAYOUT] ⏳ Token in URL but not in state yet, waiting for save...");
+        // Token is being extracted, wait a bit
+        setTimeout(() => {
+          const stored = localStorage.getItem("indovault-auth");
+          const parsed = stored ? JSON.parse(stored) : null;
+          const tokenNow = parsed?.state?.token;
+          if (tokenNow) {
+            console.log("[DASHBOARD LAYOUT] ✅ Token now available after wait");
+            // Trigger re-check by updating state
+            setKeyLoaded(false);
+          } else {
+            console.warn("[DASHBOARD LAYOUT] 🔴 No token found after wait - showing login prompt");
+            setMissingToken(true);
+            setKeyLoaded(true);
+          }
+        }, 300);
+        return;
+      }
+      
       console.warn("[DASHBOARD LAYOUT] 🔴 No token found after all checks - showing login prompt", {
         hostname,
         pathname,
         tokenFromZustand: !!token,
+        hasTokenInUrl,
       });
       setMissingToken(true);
       setKeyLoaded(true);
@@ -179,7 +273,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setMissingToken(true);
           setKeyLoaded(true);
           // Redirect to main domain login
-          window.location.replace("https://idpassku.com/login");
+          window.location.replace(getMainDomainUrl("/login"));
         }
       }).catch((error) => {
         console.error("[DASHBOARD LAYOUT] ❌ Error loading encryption key:", error, {
@@ -231,7 +325,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button
             className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/30"
             onClick={() => {
-              window.location.href = "https://idpassku.com/login";
+              window.location.href = getMainDomainUrl("/login");
             }}
           >
             Buka Halaman Login

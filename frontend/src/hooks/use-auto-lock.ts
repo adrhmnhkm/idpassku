@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store";
 import { keyManager } from "@/lib/crypto";
+import { getMainDomainUrl } from "@/lib/url-helper";
 
 const EVENTS = [
     "mousedown",
@@ -39,7 +40,7 @@ export function useAutoLock(timeout = DEFAULT_TIMEOUT) {
 
         // Redirect to main domain login page
         if (typeof window !== "undefined") {
-            window.location.href = "https://idpassku.com/login";
+            window.location.href = getMainDomainUrl("/login");
         } else {
             router.replace("/login");
         }

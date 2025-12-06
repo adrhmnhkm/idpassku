@@ -37,11 +37,17 @@ export function middleware(req: NextRequest) {
   // Normalize hostname (remove port if present)
   const normalizedHost = hostname.split(":")[0];
   
-  // Check if we're on main domain (idpassku.com)
-  const isMainDomain = normalizedHost === MAIN_DOMAIN;
+  // For local development, treat localhost as main domain
+  const isMainDomain = normalizedHost === MAIN_DOMAIN || 
+    normalizedHost === "localhost" || 
+    normalizedHost === "127.0.0.1" ||
+    normalizedHost.endsWith(".localhost") ||
+    (normalizedHost.includes("localhost") && !normalizedHost.includes("vault"));
   
-  // Check if we're on vault domain (vault.idpassku.com)
-  const isVaultDomain = normalizedHost === VAULT_DOMAIN;
+  // Check if we're on vault domain
+  const isVaultDomain = normalizedHost === VAULT_DOMAIN || 
+    normalizedHost.includes("vault.") ||
+    (normalizedHost.includes("localhost") && normalizedHost.includes("vault"));
 
   console.log(`[MIDDLEWARE] Domain check:`, {
     normalizedHost,
@@ -53,7 +59,7 @@ export function middleware(req: NextRequest) {
   // CRITICAL: If accessing protected routes on main domain, redirect to LANDING (not /login)
   // Tujuan: hentikan loop domain; user masuk dari landing lalu login normal
   if (isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    const url = new URL(`https://${MAIN_DOMAIN}/`);
+    const url = new URL(req.nextUrl.origin);
     console.warn(`[MIDDLEWARE] 🔴 REDIRECT to landing (main domain protected route)`, {
       from: `${normalizedHost}${pathname}`,
       to: url.toString(),
@@ -66,7 +72,15 @@ export function middleware(req: NextRequest) {
   // CRITICAL: All public routes (login, register, etc) must be on MAIN domain
   // Redirect from vault domain to main domain
   if (isVaultDomain && PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + "/"))) {
-    const url = new URL(`https://${MAIN_DOMAIN}${pathname}${req.nextUrl.search}`);
+    let targetOrigin = req.nextUrl.origin;
+    // For local development, redirect to non-vault localhost
+    if (normalizedHost.includes("localhost")) {
+      targetOrigin = req.nextUrl.origin.replace("vault.", "");
+    } else {
+      targetOrigin = `https://${MAIN_DOMAIN}`;
+    }
+    
+    const url = new URL(`${targetOrigin}${pathname}${req.nextUrl.search}`);
     console.log(`[MIDDLEWARE] 🔵 REDIRECT: Public route on vault domain -> main domain`, {
       from: `${normalizedHost}${pathname}`,
       to: url.toString(),
