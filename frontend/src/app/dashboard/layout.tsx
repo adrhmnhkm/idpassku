@@ -23,7 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHydrated(true);
   }, []);
 
-  // STEP 2 — Check domain and handle unauthorized access
+  // STEP 2 — Check domain and handle unauthorized access (IMMEDIATE, before any render)
   useEffect(() => {
     if (!hydrated) return;
 
@@ -36,25 +36,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isVaultDomain = hostname === "vault.idpassku.com" || hostname.includes("vault.");
     const isMainDomain = hostname === "idpassku.com" || (!isVaultDomain && !hostname.includes("localhost") && !hostname.includes("127.0.0.1"));
 
-    // CRITICAL: If accessing dashboard from main domain while authenticated, logout and redirect
-    if (isMainDomain && token) {
-      console.warn("Unauthorized access: Dashboard accessed from main domain while authenticated. Logging out...");
-      // Clear encryption key
-      keyManager.clearKey();
-      // Logout user
-      logout();
-      // Redirect to login page on main domain
-      window.location.href = "https://idpassku.com/login";
+    // CRITICAL: If accessing dashboard from main domain, immediately redirect/logout
+    // This handles both authenticated and unauthenticated cases
+    if (isMainDomain) {
+      if (token) {
+        // If authenticated, logout first then redirect
+        console.warn("Unauthorized access: Dashboard accessed from main domain while authenticated. Logging out...");
+        keyManager.clearKey();
+        logout();
+      }
+      // Always redirect to login page on main domain
+      window.location.replace("https://idpassku.com/login");
       return;
     }
 
     // If no token, redirect to login and mark as loaded (redirect will happen)
     if (!token) {
       setKeyLoaded(true); // Mark as loaded so we don't show loading forever
-      if (isVaultDomain || isMainDomain) {
-        // Redirect to main domain login
-        window.location.href = "https://idpassku.com/login";
-      }
+      // Redirect to main domain login
+      window.location.replace("https://idpassku.com/login");
       return;
     }
 
@@ -69,13 +69,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           // If we have a token but no key, we must force re-login to generate the key
           // because we cannot decrypt anything without it.
           logout();
-          window.location.href = "https://idpassku.com/login";
+          window.location.replace("https://idpassku.com/login");
         }
       });
     } else if (token && !isVaultDomain && !isMainDomain) {
       // If we have token but not on vault domain (and not main domain - already handled above)
       // This handles localhost or other domains - redirect to vault domain
-      window.location.href = "https://vault.idpassku.com/dashboard";
+      window.location.replace("https://vault.idpassku.com/dashboard");
     }
   }, [hydrated, token, logout, router]);
 
