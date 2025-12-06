@@ -23,9 +23,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHydrated(true);
   }, []);
 
-  // STEP 2 — Load encryption key from session if available
+  // STEP 2 — Check domain and handle unauthorized access
   useEffect(() => {
-    if (hydrated && token) {
+    if (!hydrated) return;
+
+    if (typeof window === "undefined") {
+      setKeyLoaded(true);
+      return;
+    }
+
+    const hostname = window.location.hostname;
+    const isVaultDomain = hostname === "vault.idpassku.com" || hostname.includes("vault.");
+    const isMainDomain = hostname === "idpassku.com" || (!isVaultDomain && !hostname.includes("localhost") && !hostname.includes("127.0.0.1"));
+
+    // CRITICAL: If accessing dashboard from main domain while authenticated, logout and redirect
+    if (isMainDomain && token) {
+      console.warn("Unauthorized access: Dashboard accessed from main domain while authenticated. Logging out...");
+      // Clear encryption key
+      keyManager.clearKey();
+      // Logout user
+      logout();
+      // Redirect to login page on main domain
+      window.location.href = "https://idpassku.com/login";
+      return;
+    }
+
+    // If no token, redirect to login and mark as loaded (redirect will happen)
+    if (!token) {
+      setKeyLoaded(true); // Mark as loaded so we don't show loading forever
+      if (isVaultDomain || isMainDomain) {
+        // Redirect to main domain login
+        window.location.href = "https://idpassku.com/login";
+      }
+      return;
+    }
+
+    // If we have token and are on vault domain, proceed with key loading
+    if (token && isVaultDomain) {
       keyManager.loadKeyFromSession().then((success) => {
         if (success) {
           console.log("Encryption key restored from session");
@@ -35,21 +69,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           // If we have a token but no key, we must force re-login to generate the key
           // because we cannot decrypt anything without it.
           logout();
-          router.replace("/login");
+          window.location.href = "https://idpassku.com/login";
         }
       });
-    } else if (hydrated && !token) {
-      // No token, just mark key check as done (will redirect anyway)
-      setKeyLoaded(true);
+    } else if (token && !isVaultDomain && !isMainDomain) {
+      // If we have token but not on vault domain (and not main domain - already handled above)
+      // This handles localhost or other domains - redirect to vault domain
+      window.location.href = "https://vault.idpassku.com/dashboard";
     }
   }, [hydrated, token, logout, router]);
-
-  // STEP 3 — Redirect ONLY after hydration
-  useEffect(() => {
-    if (hydrated && !token) {
-      router.replace("/login");
-    }
-  }, [hydrated, token, router]);
 
   // STEP 4 — Render "blank" while hydration/key loading is happening
   if (!hydrated || !keyLoaded) {

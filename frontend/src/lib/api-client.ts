@@ -85,8 +85,8 @@ apiClient.interceptors.response.use(
                 // No refresh token, logout and redirect
                 useAuth.getState().logout();
                 if (typeof window !== "undefined") {
-                    // Use replace to avoid adding to history
-                    window.location.replace("/login");
+                    // Redirect to main domain login page
+                    window.location.replace("https://idpassku.com/login");
                 }
                 return Promise.reject({
                     ...(error as any),
@@ -118,7 +118,8 @@ apiClient.interceptors.response.use(
                 // Refresh failed, logout and redirect
                 useAuth.getState().logout();
                 if (typeof window !== "undefined") {
-                    window.location.replace("/login");
+                    // Redirect to main domain login page
+                    window.location.replace("https://idpassku.com/login");
                 }
 
                 const authError = refreshError as AxiosError;

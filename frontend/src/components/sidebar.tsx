@@ -4,16 +4,33 @@ import Link from "next/link";
 import { useAuth } from "@/lib/store";
 import { keyManager } from "@/lib/crypto";
 import { TwoFactorSetup } from "@/components/two-factor-setup";
+import { api } from "@/lib/axios";
 
 export default function Sidebar() {
   const logout = useAuth((s) => s.logout);
+  const refreshToken = useAuth((s) => s.refreshToken);
 
-  const handleLogout = () => {
-    keyManager.clearKey(); // Clear encryption key on logout
-    logout();
+  const handleLogout = async () => {
+    try {
+      // Call backend to revoke refresh token
+      if (refreshToken) {
+        try {
+          await api.post("/auth/logout", { refreshToken });
+        } catch (error) {
+          // Continue with logout even if API call fails
+          console.error("Logout API call failed:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      // Clear local state
+      keyManager.clearKey(); // Clear encryption key on logout
+      logout(); // Clear tokens from store
 
-      // redirect lintas domain agar semua sesi logout benar-benar hilang
-    window.location.href = "https://idpassku.com";
+      // Redirect to main domain landing page
+      window.location.href = "https://idpassku.com";
+    }
   };
 
   return (
