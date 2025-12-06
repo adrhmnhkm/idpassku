@@ -37,8 +37,12 @@ export function useAutoLock(timeout = DEFAULT_TIMEOUT) {
         // Logout user
         logout();
 
-        // Redirect to login
-        router.replace("/login");
+        // Redirect to main domain login page
+        if (typeof window !== "undefined") {
+            window.location.href = "https://idpassku.com/login";
+        } else {
+            router.replace("/login");
+        }
     }, [token, logout, router]);
 
     const resetTimer = useCallback(() => {

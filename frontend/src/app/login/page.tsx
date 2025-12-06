@@ -29,7 +29,16 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (hydrated && token) {
-      router.replace("/dashboard");
+      // Check if we're on the correct domain
+      const isVaultDomain = typeof window !== "undefined" && 
+        (window.location.hostname === "vault.idpassku.com" || window.location.hostname.includes("vault."));
+      
+      if (isVaultDomain) {
+        router.replace("/dashboard");
+      } else {
+        // Redirect to vault domain
+        window.location.href = "https://vault.idpassku.com/dashboard";
+      }
     }
   }, [hydrated, token, router]);
 
@@ -50,13 +59,28 @@ export default function LoginPage() {
       }
 
       // Login Success
-      const { accessToken, user } = res.data;
+      const { accessToken, refreshToken, user } = res.data;
       setToken(accessToken); // Use setToken from store
+      
+      // Store refresh token if provided
+      const setRefreshToken = useAuth.getState().setRefreshToken;
+      if (refreshToken) {
+        setRefreshToken(refreshToken);
+      }
 
       // Derive encryption key
       await keyManager.deriveKey(password);
 
-      router.push(`${process.env.NEXT_PUBLIC_DASHBOARD_URL}/dashboard`);
+      // Always redirect to vault domain after login
+      const vaultUrl = typeof window !== "undefined" && window.location.hostname.includes("vault.")
+        ? "/dashboard" // Already on vault domain, use relative path
+        : "https://vault.idpassku.com/dashboard"; // On main domain, redirect to vault domain
+      
+      if (vaultUrl.startsWith("http")) {
+        window.location.href = vaultUrl;
+      } else {
+        router.push(vaultUrl);
+      }
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan saat login";
