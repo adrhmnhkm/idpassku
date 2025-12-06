@@ -6,14 +6,11 @@ import { useAuth } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { useRouter } from "next/navigation";
 import { keyManager } from "@/lib/crypto";
 import { getVaultDomainUrl, isMainDomain } from "@/lib/url-helper";
 
 export default function LoginPage() {
   const setToken = useAuth((s) => s.setToken);
-  const token = useAuth((s) => s.token);
-  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,8 +18,6 @@ export default function LoginPage() {
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
-  const [redirectingToVault, setRedirectingToVault] = useState(false);
 
   // Hydrate check to avoid SSR mismatch
   useEffect(() => {
@@ -31,13 +26,6 @@ export default function LoginPage() {
 
   // Login harus di main domain (idpassku.com/login atau localhost)
   // Middleware akan redirect jika diakses dari vault domain
-
-  // Jangan auto-redirect; cukup tandai jika sudah login
-  useEffect(() => {
-    if (hydrated && token) {
-      setAlreadyLoggedIn(true);
-    }
-  }, [hydrated, token]);
 
   async function handleLogin() {
     // Login harus di main domain (idpassku.com/login atau localhost)
@@ -169,19 +157,6 @@ export default function LoginPage() {
             🔐 Indo-Vault Login
           </CardTitle>
           <p className="text-sm text-gray-400 mt-2 text-center">Zero-Knowledge Password Manager</p>
-          {alreadyLoggedIn && (
-            <div className="mt-3 text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 text-center">
-              Kamu sudah login. Buka dashboard di vault domain:
-              <div className="mt-2">
-                <a
-                  href={getVaultDomainUrl("/dashboard")}
-                  className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow"
-                >
-                  Buka Vault Dashboard
-                </a>
-              </div>
-            </div>
-          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4 mt-2">
           {!showTwoFactor ? (
