@@ -23,9 +23,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHydrated(true);
   }, []);
 
-  // STEP 2 — Check domain IMMEDIATELY on mount (before hydration)
-  // This prevents any rendering that would trigger static chunk loading
+  // STEP 2 — Check domain and authentication (only after hydration)
   useEffect(() => {
+    if (!hydrated) return;
+
     if (typeof window === "undefined") {
       setKeyLoaded(true);
       return;
@@ -35,31 +36,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isVaultDomain = hostname === "vault.idpassku.com" || hostname.includes("vault.");
     const isMainDomain = hostname === "idpassku.com" || (!isVaultDomain && !hostname.includes("localhost") && !hostname.includes("127.0.0.1"));
 
-    // CRITICAL: If accessing dashboard from main domain, immediately redirect/logout
-    // This must happen BEFORE hydration to prevent static chunk loading
+    // Safety check: If somehow we're on main domain (middleware should have redirected)
+    // Logout and redirect to login
     if (isMainDomain) {
-      // Use synchronous script execution to prevent any React rendering
       if (token) {
-        // Clear localStorage synchronously
-        try {
-          localStorage.removeItem("indovault-auth");
-          sessionStorage.removeItem("encryption-key");
-        } catch (e) {
-          // Ignore errors
-        }
+        console.warn("Unauthorized access: Dashboard accessed from main domain. Logging out...");
+        keyManager.clearKey();
+        logout();
       }
-      // Immediate redirect - this prevents any React components from rendering
       window.location.replace("https://idpassku.com/login");
       return;
     }
 
-    // Continue with hydration check
-    if (!hydrated) return;
-
-    // If no token, redirect to login and mark as loaded (redirect will happen)
+    // If no token, redirect to login
     if (!token) {
-      setKeyLoaded(true); // Mark as loaded so we don't show loading forever
-      // Redirect to main domain login
+      setKeyLoaded(true);
       window.location.replace("https://idpassku.com/login");
       return;
     }
@@ -72,15 +63,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setKeyLoaded(true);
         } else {
           console.log("No encryption key in session - forcing re-login");
-          // If we have a token but no key, we must force re-login to generate the key
-          // because we cannot decrypt anything without it.
           logout();
           window.location.replace("https://idpassku.com/login");
         }
       });
     } else if (token && !isVaultDomain && !isMainDomain) {
-      // If we have token but not on vault domain (and not main domain - already handled above)
-      // This handles localhost or other domains - redirect to vault domain
+      // If we have token but not on vault domain (e.g., localhost)
+      // Redirect to vault domain
       window.location.replace("https://vault.idpassku.com/dashboard");
     }
   }, [hydrated, token, logout, router]);

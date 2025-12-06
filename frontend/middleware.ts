@@ -40,17 +40,18 @@ export function middleware(req: NextRequest) {
     req.headers.get("next-router-prefetch") === "1" ||
     req.headers.get("accept")?.includes("text/x-component");
 
-  // For RSC requests to protected routes on main domain, return 404 to prevent CORS
-  // Client-side script in layout.tsx will handle the redirect
+  // For RSC requests to protected routes on main domain, allow through
+  // Dashboard layout will handle the redirect client-side
+  // Returning 404 causes Next.js to fallback to browser navigation which causes blinking
   if (isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    return new NextResponse(null, { status: 404 });
+    return NextResponse.next();
   }
 
-  // CRITICAL: If accessing protected routes on main domain, redirect to vault domain
-  // This ensures dashboard is never accessible on main domain
-  // Skip redirect for RSC requests (handled by client-side script)
+  // CRITICAL: If accessing protected routes on main domain, redirect to LOGIN (not vault)
+  // This ensures dashboard is never accessible on main domain and prevents redirect loops
+  // Skip redirect for RSC requests (will be handled by dashboard layout)
   if (!isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    const url = new URL(`https://${VAULT_DOMAIN}${pathname}${req.nextUrl.search}`);
+    const url = new URL(`https://${MAIN_DOMAIN}/login${req.nextUrl.search}`);
     return NextResponse.redirect(url, 307); // 307 Temporary Redirect (preserves method)
   }
 
