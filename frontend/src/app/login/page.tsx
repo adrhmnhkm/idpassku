@@ -29,15 +29,18 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (hydrated && token) {
-      // Check if we're on the correct domain
-      const isVaultDomain = typeof window !== "undefined" && 
-        (window.location.hostname === "vault.idpassku.com" || window.location.hostname.includes("vault."));
-      
+      const isBrowser = typeof window !== "undefined";
+      const isVaultDomain =
+        isBrowser &&
+        (window.location.hostname === "vault.idpassku.com" ||
+          window.location.hostname.includes("vault."));
+
       if (isVaultDomain) {
+        // Already on vault -> internal navigate
         router.replace("/dashboard");
-      } else {
-        // Redirect to vault domain
-        window.location.href = "https://vault.idpassku.com/dashboard";
+      } else if (isBrowser) {
+        // On main domain -> jump directly to vault domain (avoid /dashboard on main which triggers middleware loop)
+        window.location.replace("https://vault.idpassku.com/dashboard");
       }
     }
   }, [hydrated, token, router]);

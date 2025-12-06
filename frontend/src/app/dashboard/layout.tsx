@@ -2,13 +2,11 @@
 
 import { useAuth } from "@/lib/store";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Sidebar from "@/components/sidebar";
 import { keyManager } from "@/lib/crypto";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const token = useAuth((s) => s.token);
   const logout = useAuth((s) => s.logout);
 
@@ -19,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [keyLoaded, setKeyLoaded] = useState(false);
   const [zustandReady, setZustandReady] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [missingToken, setMissingToken] = useState(false);
 
   // STEP 1 — Wait for Zustand to hydrate from localStorage
   useEffect(() => {
@@ -112,11 +111,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         tokenFromZustand: !!token,
       });
       setRedirecting(true);
+      setMissingToken(true);
       setKeyLoaded(true);
-      // Use setTimeout to prevent multiple redirects
-      setTimeout(() => {
-        window.location.replace("https://idpassku.com/login");
-      }, 100);
+      // Jangan redirect otomatis lagi untuk menghindari blink;
+      // biarkan user klik tombol manual.
       return;
     }
 
@@ -150,7 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         window.location.replace("https://idpassku.com/login");
       });
     }
-  }, [hydrated, zustandReady, token, logout, router]);
+  }, [hydrated, zustandReady, token, logout]);
 
   // STEP 4 — Render "blank" while hydration/key loading is happening
   if (!hydrated || !zustandReady || !keyLoaded) {
@@ -176,9 +174,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return false;
   })());
 
-  if (!hasToken) {
-    console.log("[DASHBOARD LAYOUT] ⏳ No token - waiting for redirect...");
-    return null; // Redirect is on the way
+  if (!hasToken || missingToken) {
+    console.log("[DASHBOARD LAYOUT] ⏳ No token - showing login prompt");
+    return (
+      <div className="min-h-screen bg-emerald-dark-gradient text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md px-6">
+          <p className="text-xl font-semibold text-emerald-300">Sesi tidak ditemukan</p>
+          <p className="text-sm text-emerald-200/70">
+            Silakan login kembali di domain utama untuk melanjutkan.
+          </p>
+          <button
+            className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/30"
+            onClick={() => {
+              setRedirecting(true);
+              window.location.href = "https://idpassku.com/login";
+            }}
+          >
+            Buka Halaman Login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // STEP 5 — Normal render
