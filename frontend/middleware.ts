@@ -14,6 +14,15 @@ export function middleware(req: NextRequest) {
   const hostname = req.headers.get("host") || "";
   const pathname = req.nextUrl.pathname;
   const searchParams = req.nextUrl.searchParams;
+  const method = req.method;
+  const userAgent = req.headers.get("user-agent") || "";
+  const isRSC = searchParams.has("_rsc") || req.headers.get("accept")?.includes("text/x-component");
+  
+  console.log(`[MIDDLEWARE] ${method} ${pathname}`, {
+    hostname,
+    isRSC,
+    userAgent: userAgent.substring(0, 50),
+  });
   
   // CRITICAL: Never process static assets, chunks, or Next.js internal routes
   if (
@@ -21,6 +30,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/api/") ||
     pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf|eot)$/i)
   ) {
+    console.log(`[MIDDLEWARE] Skipping static asset: ${pathname}`);
     return NextResponse.next();
   }
   
@@ -33,25 +43,24 @@ export function middleware(req: NextRequest) {
   // Check if we're on vault domain (vault.idpassku.com)
   const isVaultDomain = normalizedHost === VAULT_DOMAIN;
 
-  // Detect RSC (React Server Components) requests
-  // RSC requests have _rsc parameter or specific headers
-  const isRSCRequest = searchParams.has("_rsc") || 
-    req.headers.get("rsc") === "1" ||
-    req.headers.get("next-router-prefetch") === "1" ||
-    req.headers.get("accept")?.includes("text/x-component");
+  console.log(`[MIDDLEWARE] Domain check:`, {
+    normalizedHost,
+    isMainDomain,
+    isVaultDomain,
+    pathname,
+  });
 
-  // For RSC requests to protected routes on main domain, allow through
-  // Dashboard layout will handle the redirect client-side
-  // Returning 404 causes Next.js to fallback to browser navigation which causes blinking
-  if (isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // CRITICAL: If accessing protected routes on main domain, redirect to LOGIN (not vault)
-  // This ensures dashboard is never accessible on main domain and prevents redirect loops
-  // Skip redirect for RSC requests (will be handled by dashboard layout)
-  if (!isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
+  // CRITICAL: If accessing protected routes on main domain, redirect to LOGIN
+  // This ensures dashboard is never accessible on main domain
+  // We redirect ALL requests (including RSC) to prevent any rendering on main domain
+  if (isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
     const url = new URL(`https://${MAIN_DOMAIN}/login${req.nextUrl.search}`);
+    console.warn(`[MIDDLEWARE] 🔴 REDIRECT: Protected route on main domain detected!`, {
+      from: `${normalizedHost}${pathname}`,
+      to: url.toString(),
+      isRSC,
+      method,
+    });
     return NextResponse.redirect(url, 307); // 307 Temporary Redirect (preserves method)
   }
 
@@ -60,15 +69,24 @@ export function middleware(req: NextRequest) {
   // But we should redirect public routes like landing page to main domain
   if (isVaultDomain && pathname === "/") {
     const url = new URL(`https://${MAIN_DOMAIN}/`);
+    console.log(`[MIDDLEWARE] 🔵 REDIRECT: Landing page on vault domain -> main domain`, {
+      from: `${normalizedHost}${pathname}`,
+      to: url.toString(),
+    });
     return NextResponse.redirect(url, 307);
   }
 
   // If accessing login/register on vault domain, redirect to main domain
   if (isVaultDomain && (pathname === "/login" || pathname === "/register")) {
     const url = new URL(`https://${MAIN_DOMAIN}${pathname}${req.nextUrl.search}`);
+    console.log(`[MIDDLEWARE] 🔵 REDIRECT: Public route on vault domain -> main domain`, {
+      from: `${normalizedHost}${pathname}`,
+      to: url.toString(),
+    });
     return NextResponse.redirect(url, 307);
   }
 
+  console.log(`[MIDDLEWARE] ✅ Allowing request through: ${normalizedHost}${pathname}`);
   return NextResponse.next();
 }
 

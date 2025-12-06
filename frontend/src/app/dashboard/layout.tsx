@@ -20,57 +20,74 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // STEP 1 — Hydrate
   useEffect(() => {
+    console.log("[DASHBOARD LAYOUT] 🟢 Hydrating...");
     setHydrated(true);
   }, []);
 
-  // STEP 2 — Check domain and authentication (only after hydration)
+  // STEP 2 — Check authentication and load encryption key (only after hydration)
+  // NOTE: Domain check is handled by middleware, we don't need to check here
+  // to avoid race conditions and multiple redirects
   useEffect(() => {
-    if (!hydrated) return;
+    console.log("[DASHBOARD LAYOUT] 🔍 Checking auth state...", {
+      hydrated,
+      hasToken: !!token,
+      hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
+      pathname: typeof window !== "undefined" ? window.location.pathname : "SSR",
+    });
+
+    if (!hydrated) {
+      console.log("[DASHBOARD LAYOUT] ⏳ Waiting for hydration...");
+      return;
+    }
 
     if (typeof window === "undefined") {
+      console.log("[DASHBOARD LAYOUT] ⚠️ SSR - skipping client-side checks");
       setKeyLoaded(true);
       return;
     }
 
     const hostname = window.location.hostname;
-    const isVaultDomain = hostname === "vault.idpassku.com" || hostname.includes("vault.");
-    const isMainDomain = hostname === "idpassku.com" || (!isVaultDomain && !hostname.includes("localhost") && !hostname.includes("127.0.0.1"));
-
-    // Safety check: If somehow we're on main domain (middleware should have redirected)
-    // Logout and redirect to login
-    if (isMainDomain) {
-      if (token) {
-        console.warn("Unauthorized access: Dashboard accessed from main domain. Logging out...");
-        keyManager.clearKey();
-        logout();
-      }
-      window.location.replace("https://idpassku.com/login");
-      return;
-    }
+    const pathname = window.location.pathname;
 
     // If no token, redirect to login
     if (!token) {
+      console.warn("[DASHBOARD LAYOUT] 🔴 No token found - redirecting to login", {
+        hostname,
+        pathname,
+      });
       setKeyLoaded(true);
       window.location.replace("https://idpassku.com/login");
       return;
     }
 
-    // If we have token and are on vault domain, proceed with key loading
-    if (token && isVaultDomain) {
+    // If we have token, proceed with key loading
+    // We assume we're on the correct domain (vault.idpassku.com) because middleware handles redirects
+    if (token) {
+      console.log("[DASHBOARD LAYOUT] 🔑 Token found - loading encryption key...", {
+        hostname,
+        pathname,
+      });
+      
       keyManager.loadKeyFromSession().then((success) => {
         if (success) {
-          console.log("Encryption key restored from session");
+          console.log("[DASHBOARD LAYOUT] ✅ Encryption key restored from session");
           setKeyLoaded(true);
         } else {
-          console.log("No encryption key in session - forcing re-login");
+          console.error("[DASHBOARD LAYOUT] ❌ No encryption key in session - forcing re-login", {
+            hostname,
+            pathname,
+          });
           logout();
           window.location.replace("https://idpassku.com/login");
         }
+      }).catch((error) => {
+        console.error("[DASHBOARD LAYOUT] ❌ Error loading encryption key:", error, {
+          hostname,
+          pathname,
+        });
+        logout();
+        window.location.replace("https://idpassku.com/login");
       });
-    } else if (token && !isVaultDomain && !isMainDomain) {
-      // If we have token but not on vault domain (e.g., localhost)
-      // Redirect to vault domain
-      window.location.replace("https://vault.idpassku.com/dashboard");
     }
   }, [hydrated, token, logout, router]);
 
