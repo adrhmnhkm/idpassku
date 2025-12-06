@@ -21,10 +21,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
+  const [redirectingToVault, setRedirectingToVault] = useState(false);
 
   // Hydrate check to avoid SSR mismatch
   useEffect(() => {
     setHydrated(true);
+  }, []);
+
+  // Pastikan login dilakukan di vault domain untuk menghindari masalah storage lintas domain
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isVaultDomain =
+      window.location.hostname === "vault.idpassku.com" ||
+      window.location.hostname.includes("vault.");
+    if (!isVaultDomain) {
+      setRedirectingToVault(true);
+      window.location.replace("https://vault.idpassku.com/login");
+    }
   }, []);
 
   // Jangan auto-redirect; cukup tandai jika sudah login
@@ -88,8 +101,8 @@ export default function LoginPage() {
     }
   }
 
-  // Show loading while checking auth state
-  if (!hydrated) {
+  // Show loading while redirecting ke vault atau hidrasi
+  if (redirectingToVault || !hydrated) {
     return (
       <div className="min-h-screen bg-emerald-dark-gradient flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>

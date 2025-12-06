@@ -75,16 +75,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 307);
   }
 
-  // If accessing login/register on vault domain, redirect to main domain
-  if (isVaultDomain && (pathname === "/login" || pathname === "/register")) {
-    const url = new URL(`https://${MAIN_DOMAIN}${pathname}${req.nextUrl.search}`);
-    console.log(`[MIDDLEWARE] 🔵 REDIRECT: Public route on vault domain -> main domain`, {
-      from: `${normalizedHost}${pathname}`,
-      to: url.toString(),
-    });
-    return NextResponse.redirect(url, 307);
-  }
-
   console.log(`[MIDDLEWARE] ✅ Allowing request through: ${normalizedHost}${pathname}`);
   return NextResponse.next();
 }
