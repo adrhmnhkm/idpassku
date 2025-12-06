@@ -92,14 +92,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!finalToken) {
       try {
         const stored = localStorage.getItem("indovault-auth");
+        console.log("[DASHBOARD LAYOUT] 🔍 Checking localStorage:", {
+          hasStorage: !!stored,
+          storageLength: stored?.length,
+        });
+        
         if (stored) {
           const parsed = JSON.parse(stored);
           finalToken = parsed?.state?.token || null;
-          console.log("[DASHBOARD LAYOUT] 🔄 Fallback check - token from localStorage:", !!finalToken);
+          console.log("[DASHBOARD LAYOUT] 🔄 Fallback check - token from localStorage:", {
+            hasToken: !!finalToken,
+            tokenLength: finalToken?.length,
+            parsedState: parsed?.state ? Object.keys(parsed.state) : null,
+          });
+        } else {
+          console.warn("[DASHBOARD LAYOUT] ⚠️ No localStorage data found for 'indovault-auth'");
         }
       } catch (error) {
         console.error("[DASHBOARD LAYOUT] ❌ Error reading localStorage:", error);
       }
+    } else {
+      console.log("[DASHBOARD LAYOUT] ✅ Token found from Zustand");
     }
 
     // If no token after all checks, redirect to login (only once)

@@ -48,8 +48,23 @@ export default function LoginPage() {
   }, [hydrated, token]);
 
   async function handleLogin() {
+    // CRITICAL: Ensure we're on vault domain before login
+    const isVaultDomain = typeof window !== "undefined" && 
+      (window.location.hostname === "vault.idpassku.com" || window.location.hostname.includes("vault."));
+    
+    if (!isVaultDomain) {
+      console.error("[LOGIN] ❌ Not on vault domain! Redirecting first...");
+      window.location.replace("https://vault.idpassku.com/login");
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log("[LOGIN] 🔐 Starting login process...", {
+        hostname: window.location.hostname,
+        isVaultDomain,
+      });
+
       // Step 1: Attempt login (with or without 2FA token)
       const payload: any = { email, password };
       if (twoFactorToken) payload.twoFactorToken = twoFactorToken;
@@ -65,7 +80,15 @@ export default function LoginPage() {
 
       // Login Success
       const { accessToken, refreshToken, user } = res.data;
-      setToken(accessToken); // Use setToken from store
+      
+      console.log("[LOGIN] ✅ Login successful, storing tokens...", {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        hostname: typeof window !== "undefined" ? window.location.hostname : "SSR",
+      });
+      
+      // Store tokens - CRITICAL: Must be on vault domain for localStorage to work
+      setToken(accessToken);
       
       // Store refresh token if provided
       const setRefreshToken = useAuth.getState().setRefreshToken;
@@ -73,19 +96,52 @@ export default function LoginPage() {
         setRefreshToken(refreshToken);
       }
 
-      // Derive encryption key
+      // Derive encryption key first (this is async and important)
+      console.log("[LOGIN] 🔑 Deriving encryption key...");
       await keyManager.deriveKey(password);
+      console.log("[LOGIN] ✅ Encryption key derived");
 
-      // Always redirect to vault domain after login
-      const vaultUrl = typeof window !== "undefined" && window.location.hostname.includes("vault.")
-        ? "/dashboard" // Already on vault domain, use relative path
-        : "https://vault.idpassku.com/dashboard"; // On main domain, redirect to vault domain
+      // Force Zustand to persist to localStorage
+      // Zustand persist is async, so we need to wait and verify
+      let retries = 0;
+      let tokenStored = false;
       
-      if (vaultUrl.startsWith("http")) {
-        window.location.href = vaultUrl;
-      } else {
-        router.push(vaultUrl);
+      while (retries < 5 && !tokenStored) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        
+        const stored = localStorage.getItem("indovault-auth");
+        const parsed = stored ? JSON.parse(stored) : null;
+        tokenStored = !!parsed?.state?.token;
+        
+        console.log(`[LOGIN] 📦 Token storage check (attempt ${retries + 1}):`, {
+          stored: !!stored,
+          tokenStored,
+          tokenMatches: parsed?.state?.token === accessToken,
+        });
+
+        if (!tokenStored && retries < 4) {
+          // Retry storing
+          console.log("[LOGIN] ⚠️ Token not stored yet, retrying...");
+          setToken(accessToken);
+          if (refreshToken) {
+            useAuth.getState().setRefreshToken(refreshToken);
+          }
+        }
+        
+        retries++;
       }
+
+      if (!tokenStored) {
+        console.error("[LOGIN] ❌ CRITICAL: Token still not stored after retries!");
+        alert("Gagal menyimpan sesi. Silakan coba login lagi.");
+        return;
+      }
+
+      console.log("[LOGIN] ✅ Token confirmed stored, redirecting...");
+
+      // Always redirect to dashboard on vault domain
+      // We're already on vault domain, so use relative path
+      router.replace("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorMessage = error.response?.data?.message || error.message || "Terjadi kesalahan saat login";
