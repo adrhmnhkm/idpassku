@@ -13,6 +13,7 @@ const PROTECTED_ROUTES = ["/dashboard"];
 export function middleware(req: NextRequest) {
   const hostname = req.headers.get("host") || "";
   const pathname = req.nextUrl.pathname;
+  const searchParams = req.nextUrl.searchParams;
   
   // Normalize hostname (remove port if present)
   const normalizedHost = hostname.split(":")[0];
@@ -23,9 +24,23 @@ export function middleware(req: NextRequest) {
   // Check if we're on vault domain (vault.idpassku.com)
   const isVaultDomain = normalizedHost === VAULT_DOMAIN;
 
+  // Detect RSC (React Server Components) requests
+  // RSC requests have _rsc parameter or specific headers
+  const isRSCRequest = searchParams.has("_rsc") || 
+    req.headers.get("rsc") === "1" ||
+    req.headers.get("next-router-prefetch") === "1" ||
+    req.headers.get("accept")?.includes("text/x-component");
+
+  // For RSC requests to protected routes on main domain, allow through
+  // Client-side will handle the redirect/logout
+  if (isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
   // CRITICAL: If accessing protected routes on main domain, redirect to vault domain
   // This ensures dashboard is never accessible on main domain
-  if (isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
+  // Skip redirect for RSC requests (handled by client-side)
+  if (!isRSCRequest && isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
     const url = new URL(`https://${VAULT_DOMAIN}${pathname}${req.nextUrl.search}`);
     return NextResponse.redirect(url, 307); // 307 Temporary Redirect (preserves method)
   }
@@ -56,6 +71,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (public folder)
+     * - RSC requests (handled by client-side)
      */
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
