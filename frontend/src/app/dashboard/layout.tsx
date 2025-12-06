@@ -16,7 +16,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [hydrated, setHydrated] = useState(false);
   const [keyLoaded, setKeyLoaded] = useState(false);
   const [zustandReady, setZustandReady] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
   const [missingToken, setMissingToken] = useState(false);
 
   // STEP 1 — Wait for Zustand to hydrate from localStorage
@@ -104,17 +103,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     // If no token after all checks, redirect to login (only once)
-    if (!finalToken && !redirecting) {
-      console.warn("[DASHBOARD LAYOUT] 🔴 No token found after all checks - redirecting to login", {
+    if (!finalToken) {
+      console.warn("[DASHBOARD LAYOUT] 🔴 No token found after all checks - showing login prompt", {
         hostname,
         pathname,
         tokenFromZustand: !!token,
       });
-      setRedirecting(true);
       setMissingToken(true);
       setKeyLoaded(true);
-      // Jangan redirect otomatis lagi untuk menghindari blink;
-      // biarkan user klik tombol manual.
       return;
     }
 
@@ -137,7 +133,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             pathname,
           });
           logout();
-          window.location.replace("https://idpassku.com/login");
+          setMissingToken(true);
+          setKeyLoaded(true);
         }
       }).catch((error) => {
         console.error("[DASHBOARD LAYOUT] ❌ Error loading encryption key:", error, {
@@ -145,7 +142,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           pathname,
         });
         logout();
-        window.location.replace("https://idpassku.com/login");
+        setMissingToken(true);
+        setKeyLoaded(true);
       });
     }
   }, [hydrated, zustandReady, token, logout]);
@@ -186,7 +184,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button
             className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/30"
             onClick={() => {
-              setRedirecting(true);
               window.location.href = "https://idpassku.com/login";
             }}
           >

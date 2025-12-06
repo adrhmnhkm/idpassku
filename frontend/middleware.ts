@@ -50,12 +50,11 @@ export function middleware(req: NextRequest) {
     pathname,
   });
 
-  // CRITICAL: If accessing protected routes on main domain, redirect to LOGIN
-  // This ensures dashboard is never accessible on main domain
-  // We redirect ALL requests (including RSC) to prevent any rendering on main domain
+  // CRITICAL: If accessing protected routes on main domain, redirect to LANDING (not /login)
+  // Tujuan: hentikan loop domain; user masuk dari landing lalu login normal
   if (isMainDomain && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    const url = new URL(`https://${MAIN_DOMAIN}/login${req.nextUrl.search}`);
-    console.warn(`[MIDDLEWARE] 🔴 REDIRECT: Protected route on main domain detected!`, {
+    const url = new URL(`https://${MAIN_DOMAIN}/`);
+    console.warn(`[MIDDLEWARE] 🔴 REDIRECT to landing (main domain protected route)`, {
       from: `${normalizedHost}${pathname}`,
       to: url.toString(),
       isRSC,

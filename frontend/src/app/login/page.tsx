@@ -20,30 +20,19 @@ export default function LoginPage() {
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
 
   // Hydrate check to avoid SSR mismatch
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  // Redirect if already authenticated
+  // Jangan auto-redirect; cukup tandai jika sudah login
   useEffect(() => {
     if (hydrated && token) {
-      const isBrowser = typeof window !== "undefined";
-      const isVaultDomain =
-        isBrowser &&
-        (window.location.hostname === "vault.idpassku.com" ||
-          window.location.hostname.includes("vault."));
-
-      if (isVaultDomain) {
-        // Already on vault -> internal navigate
-        router.replace("/dashboard");
-      } else if (isBrowser) {
-        // On main domain -> jump directly to vault domain (avoid /dashboard on main which triggers middleware loop)
-        window.location.replace("https://vault.idpassku.com/dashboard");
-      }
+      setAlreadyLoggedIn(true);
     }
-  }, [hydrated, token, router]);
+  }, [hydrated, token]);
 
   async function handleLogin() {
     setLoading(true);
@@ -100,7 +89,7 @@ export default function LoginPage() {
   }
 
   // Show loading while checking auth state
-  if (!hydrated || (hydrated && token)) {
+  if (!hydrated) {
     return (
       <div className="min-h-screen bg-emerald-dark-gradient flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
@@ -116,6 +105,19 @@ export default function LoginPage() {
             🔐 Indo-Vault Login
           </CardTitle>
           <p className="text-sm text-gray-400 mt-2 text-center">Zero-Knowledge Password Manager</p>
+          {alreadyLoggedIn && (
+            <div className="mt-3 text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 text-center">
+              Kamu sudah login. Buka dashboard di vault domain:
+              <div className="mt-2">
+                <a
+                  href="https://vault.idpassku.com/dashboard"
+                  className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow"
+                >
+                  Buka Vault Dashboard
+                </a>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4 mt-2">
           {!showTwoFactor ? (
